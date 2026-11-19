@@ -80,6 +80,7 @@
 
 .pricing-ai-content {
   display: flex;
+  min-width: 0;
   flex-direction: column;
 }
 
@@ -375,10 +376,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .pricing-featured {
-    grid-column: span 2;
-    max-width: 600px;
+  .pricing-card:last-child {
+    grid-column: 1 / -1;
     width: 100%;
+    max-width: 600px;
     justify-self: center;
   }
 }
@@ -395,19 +396,24 @@
   }
 
   .pricing-heading h2 {
-    font-size: 42px;
-    letter-spacing: -1.8px;
+    font-size: clamp(32px, 8vw, 42px);
+    letter-spacing: clamp(-1.8px, -0.35vw, -1px);
   }
 
   .pricing-heading p {
     font-size: 13px;
   }
 
+  .pricing-eyebrow {
+    font-size: 9px;
+    letter-spacing: 1.4px;
+  }
+
   .pricing-ai-note {
     align-items: flex-start;
     gap: 14px;
     margin-bottom: 45px;
-    padding: 20px;
+    padding: 20px 18px;
   }
 
   .pricing-ai-icon {
@@ -433,6 +439,11 @@
     grid-column: auto;
   }
 
+  .pricing-card:last-child {
+    grid-column: auto;
+    max-width: none;
+  }
+
   .pricing-card {
     padding: 30px 24px 25px;
   }
@@ -445,5 +456,17 @@
 
   .pricing-bottom-note {
     text-align: left;
+  }
+}
+
+@media (max-width: 380px) {
+  .pricing-section {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .pricing-card {
+    padding-right: 20px;
+    padding-left: 20px;
   }
 }
