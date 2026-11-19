@@ -139,7 +139,7 @@ export default function StoreFooter({
 
           <p>
             {isHome
-              ? "Have questions about Nexfinity MiniStore? Get in touch with our team."
+              ? "Have questions about Nexfinity Store? Get in touch with our team."
               : "Have a question about a product or need help with an order? We're just a message away."}
           </p>
 
@@ -185,7 +185,7 @@ export default function StoreFooter({
       <div className="premium-footer-bottom">
         <p>
           © {new Date().getFullYear()}{" "}
-          {isHome ? "Nexfinity MiniStore" : storeName}.
+          {isHome ? "Nexfinity Store" : storeName}.
           {" "}All rights reserved.
         </p>
 

@@ -224,7 +224,7 @@ export default function PublicStore() {
 
   const contactVendor = () => {
     const link = getWhatsAppLink(
-      `Hello ${storeName}, I found your store on Nexfinity MiniStore. I would like to make an enquiry.`
+      `Hello ${storeName}, I found your store on Nexfinity Store. I would like to make an enquiry.`
     );
 
     if (link) {
@@ -371,7 +371,7 @@ export default function PublicStore() {
       const orderTotal = Number(result.total_amount);
 
       const messageLines = [
-        `Hello ${storeName}, I have placed an order on your Nexfinity MiniStore.`,
+        `Hello ${storeName}, I have placed an order on your Nexfinity Store.`,
         "",
         `Order reference: ${orderReference}`,
         "",
@@ -503,7 +503,7 @@ export default function PublicStore() {
         <p>{error || "We couldn't find this store."}</p>
 
         <a href="/" className="public-store-home-link">
-          Visit Nexfinity MiniStore
+          Visit Nexfinity Store
         </a>
       </main>
     );

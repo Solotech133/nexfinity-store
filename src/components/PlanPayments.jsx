@@ -443,7 +443,7 @@ export default function PlanPayments({
           <span className="payments-eyebrow">SUBSCRIPTION</span>
           <h2>My Plan</h2>
           <p>
-            Manage your Nexfinity MiniStore subscription and payments.
+            Manage your Nexfinity Store subscription and payments.
           </p>
         </div>
 

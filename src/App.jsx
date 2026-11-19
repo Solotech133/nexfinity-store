@@ -334,27 +334,24 @@ function AppRoutes() {
 // =====================================
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(false);
-
-  useEffect(() => {
+  const [showSplash, setShowSplash] = useState(() => {
     try {
       const alreadyShown = sessionStorage.getItem(
         "nexfinity-store-splash"
       );
 
-      if (!alreadyShown) {
-        sessionStorage.setItem(
-          "nexfinity-store-splash",
-          "true"
-        );
+      if (alreadyShown) return false;
 
-        setShowSplash(true);
-      }
+      sessionStorage.setItem(
+        "nexfinity-store-splash",
+        "true"
+      );
+
+      return true;
     } catch {
-      // Continue normally if browser storage is unavailable.
-      setShowSplash(false);
+      return false;
     }
-  }, []);
+  });
 
   return (
     <BrowserRouter>

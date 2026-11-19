@@ -70,7 +70,7 @@ export default function StorefrontShowcase() {
             <p>
               Imagine sharing one link and giving customers access
               to your products, prices and business information.
-              That's the experience Nexfinity MiniStore helps you create.
+              That's the experience Nexfinity Store helps you create.
             </p>
 
             <div className="showcase-points">

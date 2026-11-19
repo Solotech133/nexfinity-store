@@ -48,7 +48,7 @@ export default function TrustSection() {
           </h2>
 
           <p>
-            You focus on running your business. Nexfinity MiniStore
+            You focus on running your business. Nexfinity Store
             gives you the tools to showcase your products and receive
             orders with ease.
           </p>

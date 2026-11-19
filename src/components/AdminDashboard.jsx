@@ -624,7 +624,7 @@ export default function AdminDashboard() {
 
           <div>
             <strong>NEXFINITY</strong>
-            <span>MINISTORE ADMIN</span>
+            <span>STORE ADMIN</span>
           </div>
         </div>
 
@@ -707,7 +707,7 @@ export default function AdminDashboard() {
         <header className="admin-topbar">
           <div>
             <span className="admin-topbar-label">
-              NEXFINITY MINISTORE
+              NEXFINITY STORE
             </span>
             <h2>
               {activeTab === "overview" && "Admin overview"}
@@ -739,7 +739,7 @@ export default function AdminDashboard() {
               <span className="admin-eyebrow">
                 MANAGEMENT CONSOLE
               </span>
-              <p>Manage your MiniStore platform.</p>
+              <p>Manage your Store platform.</p>
             </div>
 
             <button
@@ -1342,7 +1342,7 @@ export default function AdminDashboard() {
                   <h2>Administrator activity</h2>
                   <p>
                     Review important actions performed in your
-                    MiniStore admin workspace.
+                    Store admin workspace.
                   </p>
                 </div>
 
