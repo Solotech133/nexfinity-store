@@ -153,6 +153,25 @@ const getInitialDashboardPage = (vendor, latestPayment) => {
   return "Overview";
 };
 
+// CHECK WHETHER USER IS AN ACTIVE ADMIN
+async function fetchActiveAdmin(userId) {
+  const { data, error } = await supabase
+    .from("admin_users")
+    .select("user_id, email, role, is_active")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Admin verification error:", error);
+
+    throw new Error(
+      "We couldn't verify your account permissions. Please try again."
+    );
+  }
+
+  return data?.is_active === true ? data : null;
+}
+
 // FETCH VENDOR PROFILE
 async function fetchVendorProfile(userId) {
   const { data, error } = await supabase
@@ -318,6 +337,15 @@ export default function Dashboard() {
         throw userError || new Error("Your session has expired.");
       }
 
+      // ALWAYS CHECK ADMIN ACCESS FIRST.
+      const admin = await fetchActiveAdmin(user.id);
+
+      if (admin) {
+        navigate("/admin", { replace: true });
+        return null;
+      }
+
+      // LOAD VENDOR PROFILE ONLY FOR NON-ADMIN USERS.
       const data = await fetchVendorProfile(user.id);
 
       const latestPayment =
@@ -342,7 +370,7 @@ export default function Dashboard() {
 
       return null;
     }
-  }, []);
+  }, [navigate]);
 
   // LOAD AUTHENTICATED VENDOR
   useEffect(() => {
@@ -364,6 +392,17 @@ export default function Dashboard() {
           return;
         }
 
+        // STEP 1: CHECK ADMIN ACCESS FIRST.
+        const admin = await fetchActiveAdmin(user.id);
+
+        if (!mounted) return;
+
+        if (admin) {
+          navigate("/admin", { replace: true });
+          return;
+        }
+
+        // STEP 2: LOAD VENDOR PROFILE.
         const data = await fetchVendorProfile(user.id);
 
         if (!mounted) return;
@@ -379,6 +418,8 @@ export default function Dashboard() {
           getInitialDashboardPage(data, latestPayment)
         );
       } catch (err) {
+        console.error("Dashboard loading error:", err);
+
         if (mounted) {
           setError(
             err?.message ||
