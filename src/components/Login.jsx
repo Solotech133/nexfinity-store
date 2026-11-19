@@ -333,9 +333,9 @@ export default function Login() {
 
                 <div className="login-card-heading">
 
-                  <div className="login-card-icon">
-                    <ShieldCheck size={22} />
-                  </div>
+                  <div className="login-card-icon login-logo">
+  <img src="/images/logo2.png" alt="Nexfinity Store" />
+</div>
 
                   <span className="login-card-label">
                     WELCOME BACK
