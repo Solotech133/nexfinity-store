@@ -1,0 +1,325 @@
+
+.premium-store-footer {
+  --footer-bg: #10130b;
+  --footer-lime: #b8f500;
+  --footer-text: #f2f4eb;
+  --footer-muted: #a0a895;
+
+  width: 100%;
+  margin-top: 80px;
+  padding: 65px 6% 22px;
+  color: var(--footer-text);
+  background: var(--footer-bg);
+  font-family: "Montserrat", sans-serif;
+}
+
+.premium-store-footer *,
+.premium-store-footer *::before,
+.premium-store-footer *::after {
+  box-sizing: border-box;
+}
+
+.premium-footer-main {
+  display: grid;
+  grid-template-columns: 1.4fr 0.7fr 1fr;
+  gap: 65px;
+  max-width: 1250px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+
+.premium-footer-brand {
+  max-width: 370px;
+  min-width: 0;
+}
+
+.premium-footer-logo {
+  display: grid;
+  width: 45px;
+  height: 45px;
+  margin-bottom: 19px;
+  place-items: center;
+  color: #1b210e;
+  background: var(--footer-lime);
+  border-radius: 13px;
+}
+
+.premium-footer-brand h2 {
+  margin: 0 0 13px;
+  color: var(--footer-text);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.7px;
+  overflow-wrap: anywhere;
+}
+
+.premium-footer-brand > p,
+.premium-footer-contact > p {
+  margin: 0;
+  color: var(--footer-muted);
+  font-size: 11px;
+  line-height: 1.9;
+}
+
+.premium-footer-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 20px;
+  color: #c5cbb9;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.premium-footer-location svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--footer-lime);
+}
+
+.premium-footer-home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 19px;
+  color: var(--footer-lime);
+  font-size: 10px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.premium-footer-links,
+.premium-footer-contact {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.premium-footer-links h3,
+.premium-footer-contact h3 {
+  margin: 5px 0 23px;
+  color: var(--footer-lime);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+}
+
+.premium-footer-links a {
+  margin-bottom: 15px;
+  color: var(--footer-muted);
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.premium-footer-links a:hover,
+.premium-footer-home-link:hover {
+  color: var(--footer-lime);
+  transform: translateX(3px);
+}
+
+.premium-footer-contact > p {
+  margin-bottom: 20px;
+}
+
+.premium-footer-whatsapp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 44px;
+  padding: 0 16px;
+  color: #17200b;
+  background: var(--footer-lime);
+  border: 1px solid var(--footer-lime);
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-decoration: none;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.premium-footer-whatsapp:hover {
+  color: #17200b;
+  background: #d0ff35;
+  transform: translateY(-2px);
+}
+
+.premium-footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 17px;
+  color: var(--footer-muted);
+  font-size: 10px;
+  text-decoration: none;
+}
+
+.premium-footer-social:hover {
+  color: var(--footer-lime);
+}
+
+.premium-footer-no-contact {
+  color: var(--footer-muted);
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.premium-footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 22px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.premium-footer-bottom > p {
+  margin: 0;
+  color: var(--footer-muted);
+  font-size: 9px;
+  line-height: 1.7;
+}
+
+.premium-footer-powered {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--footer-muted);
+  font-size: 9px;
+  text-decoration: none;
+}
+
+.premium-footer-powered strong {
+  color: var(--footer-lime);
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+}
+
+.premium-footer-powered:hover {
+  color: #ffffff;
+}
+
+.premium-footer-powered svg {
+  color: var(--footer-lime);
+}
+
+.premium-footer-signature {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.premium-footer-signature span {
+  color: #747c68;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.premium-footer-signature strong {
+  color: #d0d7c2;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.7px;
+}
+
+/* Tablet */
+@media (max-width: 850px) {
+  .premium-store-footer {
+    margin-top: 60px;
+    padding: 50px 5% 20px;
+  }
+
+  .premium-footer-main {
+    grid-template-columns: 1fr 1fr;
+    gap: 38px;
+  }
+
+  .premium-footer-brand {
+    grid-column: 1 / -1;
+    max-width: 520px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 550px) {
+  .premium-store-footer {
+    margin-top: 48px;
+    padding: 42px 22px 18px;
+  }
+
+  .premium-footer-main {
+    grid-template-columns: 1fr 1fr;
+    gap: 32px 20px;
+    padding-bottom: 32px;
+  }
+
+  .premium-footer-brand {
+    grid-column: 1 / -1;
+  }
+
+  .premium-footer-brand h2 {
+    font-size: 23px;
+  }
+
+  .premium-footer-contact {
+    grid-column: 1 / -1;
+  }
+
+  .premium-footer-links h3,
+  .premium-footer-contact h3 {
+    margin-bottom: 17px;
+    font-size: 9px;
+  }
+
+  .premium-footer-links a {
+    margin-bottom: 13px;
+    font-size: 10px;
+  }
+
+  .premium-footer-contact > p {
+    max-width: 340px;
+    font-size: 10px;
+  }
+
+  .premium-footer-bottom {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
+    padding: 18px 0;
+  }
+
+  .premium-footer-bottom > p {
+    font-size: 9px;
+  }
+
+  .premium-footer-signature {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 340px) {
+  .premium-store-footer {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .premium-footer-main {
+    gap: 28px 14px;
+  }
+
+  .premium-footer-whatsapp {
+    width: 100%;
+    padding: 0 9px;
+    font-size: 9px;
+  }
+}

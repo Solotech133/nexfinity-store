@@ -1,0 +1,575 @@
+
+.nexfy-page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  color: var(--dashboard-text, #20251a);
+}
+
+.nexfy-hero {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 30px;
+  border: 1px solid rgba(184, 245, 0, 0.35);
+  border-radius: 20px;
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(184, 245, 0, 0.16),
+      transparent 35%
+    ),
+    var(--dashboard-card, #ffffff);
+}
+
+.nexfy-hero-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 17px;
+  background: #b8f500;
+  color: #20251a;
+}
+
+.nexfy-hero h2 {
+  margin: 5px 0 7px;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.15;
+  font-weight: 700;
+}
+
+.nexfy-hero p {
+  max-width: 650px;
+  margin: 0;
+  color: var(--dashboard-muted, #70766a);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.nexfy-eyebrow {
+  display: inline-block;
+  color: #849d00;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+}
+
+.nexfy-plan-badge {
+  margin-left: auto;
+  padding: 9px 13px;
+  border-radius: 30px;
+  background: rgba(184, 245, 0, 0.17);
+  color: #657d00;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.nexfy-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(0, 1.5fr);
+  align-items: start;
+  gap: 22px;
+}
+
+.nexfy-tool-panel,
+.nexfy-generator-panel,
+.nexfy-locked-card {
+  min-width: 0;
+  padding: 25px;
+  border: 1px solid var(--dashboard-border, #e9ecdf);
+  border-radius: 18px;
+  background: var(--dashboard-card, #ffffff);
+  box-shadow: 0 8px 30px rgba(25, 35, 10, 0.035);
+}
+
+.nexfy-section-heading {
+  margin-bottom: 20px;
+}
+
+.nexfy-section-heading h3 {
+  margin: 7px 0 6px;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.nexfy-section-heading p {
+  margin: 0;
+  color: var(--dashboard-muted, #70766a);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.nexfy-tool-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nexfy-tool-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--dashboard-border, #e9ecdf);
+  border-radius: 13px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.nexfy-tool-option:hover {
+  border-color: #b8d94a;
+  background: rgba(184, 245, 0, 0.07);
+}
+
+.nexfy-tool-option.active {
+  border-color: #b8f500;
+  background: rgba(184, 245, 0, 0.12);
+}
+
+.nexfy-tool-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--dashboard-soft, #f4f6ed);
+  color: #657d00;
+}
+
+.nexfy-tool-copy {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nexfy-tool-copy strong {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.nexfy-tool-copy small {
+  color: var(--dashboard-muted, #70766a);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.nexfy-tool-option > svg {
+  flex: 0 0 auto;
+  color: #718d00;
+}
+
+.nexfy-business-context {
+  display: flex;
+  gap: 11px;
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 13px;
+  background: var(--dashboard-soft, #f4f6ed);
+}
+
+.nexfy-context-icon {
+  color: #718d00;
+}
+
+.nexfy-business-context strong {
+  display: block;
+  font-size: 12px;
+}
+
+.nexfy-business-context p {
+  margin: 5px 0 0;
+  color: var(--dashboard-muted, #70766a);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.nexfy-generator-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nexfy-generator-panel label {
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.nexfy-generator-panel textarea {
+  width: 100%;
+  min-height: 165px;
+  resize: vertical;
+  padding: 15px;
+  border: 1px solid var(--dashboard-border, #e1e5d7);
+  border-radius: 12px;
+  outline: none;
+  background: var(--dashboard-input, #ffffff);
+  color: var(--dashboard-text, #20251a);
+  font-family: "Montserrat", sans-serif;
+  font-size: 13px;
+  line-height: 1.7;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.nexfy-generator-panel textarea:focus {
+  border-color: #a6d900;
+  box-shadow: 0 0 0 3px rgba(184, 245, 0, 0.13);
+}
+
+.nexfy-generator-panel textarea::placeholder {
+  color: #9a9f91;
+}
+
+.nexfy-generator-panel textarea:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.nexfy-input-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.nexfy-input-footer > span {
+  color: var(--dashboard-muted, #818779);
+  font-size: 11px;
+}
+
+.nexfy-generate-button {
+  min-height: 43px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 10px;
+  background: #b8f500;
+  color: #20251a;
+  font-family: "Montserrat", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.nexfy-generate-button:hover:not(:disabled) {
+  background: #a6dd00;
+  transform: translateY(-1px);
+}
+
+.nexfy-generate-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.nexfy-error {
+  margin-top: 15px;
+  padding: 12px 14px;
+  border: 1px solid #f2caca;
+  border-radius: 10px;
+  background: #fff3f3;
+  color: #a42c2c;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.nexfy-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--dashboard-soft, #f4f6ed);
+  color: #718d00;
+}
+
+.nexfy-loading div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.nexfy-loading strong {
+  color: var(--dashboard-text, #20251a);
+  font-size: 12px;
+}
+
+.nexfy-loading span {
+  color: var(--dashboard-muted, #70766a);
+  font-size: 11px;
+}
+
+.nexfy-spin {
+  animation: nexfy-spin 1s linear infinite;
+}
+
+@keyframes nexfy-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.nexfy-result {
+  margin-top: 22px;
+  padding: 18px;
+  border: 1px solid rgba(184, 245, 0, 0.55);
+  border-radius: 14px;
+  background: var(--dashboard-soft, #f8faef);
+}
+
+.nexfy-result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--dashboard-border, #e5e9d9);
+}
+
+.nexfy-result-heading h3 {
+  margin: 5px 0 0;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 19px;
+}
+
+.nexfy-copy-button,
+.nexfy-reset-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--dashboard-border, #e1e5d7);
+  border-radius: 9px;
+  background: var(--dashboard-card, #ffffff);
+  color: var(--dashboard-text, #20251a);
+  font-family: "Montserrat", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.nexfy-copy-button {
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.nexfy-copy-button:hover,
+.nexfy-reset-button:hover {
+  border-color: #b8d94a;
+  background: rgba(184, 245, 0, 0.12);
+}
+
+.nexfy-result-content {
+  padding: 17px 0;
+  color: var(--dashboard-text, #20251a);
+  font-size: 13px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.nexfy-result-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--dashboard-border, #e5e9d9);
+}
+
+.nexfy-result-footer > span {
+  color: var(--dashboard-muted, #70766a);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.nexfy-reset-button {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.nexfy-locked-card {
+  max-width: 620px;
+  margin: 0 auto;
+  padding: 35px;
+  text-align: center;
+}
+
+.nexfy-lock-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 18px;
+  border-radius: 18px;
+  background: rgba(184, 245, 0, 0.18);
+  color: #718d00;
+}
+
+.nexfy-locked-card h3 {
+  margin: 0 0 10px;
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 22px;
+  line-height: 1.35;
+}
+
+.nexfy-locked-card > p {
+  max-width: 450px;
+  margin: 0 auto;
+  color: var(--dashboard-muted, #70766a);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.nexfy-plan-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 25px 0;
+}
+
+.nexfy-plan-options > div {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 17px 12px;
+  border: 1px solid var(--dashboard-border, #e9ecdf);
+  border-radius: 12px;
+  background: var(--dashboard-soft, #f8faef);
+}
+
+.nexfy-plan-options strong {
+  font-family: "Bricolage Grotesque", sans-serif;
+  font-size: 16px;
+}
+
+.nexfy-plan-options span {
+  color: #718d00;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.nexfy-locked-card .nexfy-locked-note {
+  font-size: 11px;
+}
+
+@media (max-width: 1000px) {
+  .nexfy-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .nexfy-tool-list {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .nexfy-tool-option {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .nexfy-tool-copy {
+    flex-basis: calc(100% - 54px);
+  }
+
+  .nexfy-tool-option > svg {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 650px) {
+  .nexfy-page {
+    gap: 16px;
+  }
+
+  .nexfy-hero {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 21px;
+    border-radius: 15px;
+  }
+
+  .nexfy-hero-icon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 14px;
+  }
+
+  .nexfy-hero > div:nth-child(2) {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .nexfy-hero h2 {
+    font-size: 25px;
+  }
+
+  .nexfy-hero p {
+    font-size: 12px;
+  }
+
+  .nexfy-plan-badge {
+    margin-left: 0;
+  }
+
+  .nexfy-tool-panel,
+  .nexfy-generator-panel {
+    padding: 18px;
+    border-radius: 14px;
+  }
+
+  .nexfy-tool-list {
+    grid-template-columns: 1fr;
+  }
+
+  .nexfy-tool-option {
+    align-items: center;
+    flex-wrap: nowrap;
+  }
+
+  .nexfy-tool-copy {
+    flex-basis: auto;
+  }
+
+  .nexfy-input-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nexfy-generate-button {
+    width: 100%;
+  }
+
+  .nexfy-result-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .nexfy-locked-card {
+    padding: 25px 18px;
+  }
+
+  .nexfy-plan-options {
+    grid-template-columns: 1fr;
+  }
+}
