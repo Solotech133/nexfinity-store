@@ -1,5 +1,5 @@
 
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 
 import {
   BrowserRouter,
@@ -59,7 +59,65 @@ const AdminDashboard = lazy(
 // PUBLIC STORE
 const PublicStore = lazy(() => import("./components/PublicStore"));
 
+// =====================================
+// NEXFINITY STORE SPLASH SCREEN
+// =====================================
+
+function SplashScreen({ onComplete }) {
+  const [leaving, setLeaving] = useState(false);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => {
+      setLeaving(true);
+    }, 1900);
+
+    const completeTimer = setTimeout(() => {
+      onComplete();
+    }, 2450);
+
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(completeTimer);
+    };
+  }, [onComplete]);
+
+  return (
+    <div
+      className={`splash-screen ${leaving ? "splash-leaving" : ""}`}
+      aria-label="Welcome to Nexfinity Store"
+      role="status"
+    >
+      <div className="splash-content">
+        <div className="splash-logo-wrapper">
+          <img
+            src="/images/logo.png"
+            alt="Nexfinity Store"
+            className="splash-logo"
+          />
+        </div>
+
+        <h1 className="splash-brand">
+          NEXFINITY <span>STORE</span>
+        </h1>
+
+        <p className="splash-tagline">
+          Your store. Your brand. Your growth.
+        </p>
+
+        <div className="splash-loader">
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// =====================================
 // LOADING WRAPPER
+// =====================================
+
 function LoadingRoute({ children }) {
   return (
     <Suspense fallback={<SharedLoadingScreen />}>
@@ -68,7 +126,10 @@ function LoadingRoute({ children }) {
   );
 }
 
+// =====================================
 // SHARED WEBSITE LAYOUT
+// =====================================
+
 function SiteLayout({
   children,
   headerMode = "full",
@@ -87,7 +148,10 @@ function SiteLayout({
   );
 }
 
+// =====================================
 // HOME PAGE
+// =====================================
+
 function HomePage() {
   return (
     <SiteLayout headerMode="full" showFooter>
@@ -103,7 +167,10 @@ function HomePage() {
   );
 }
 
+// =====================================
 // INFORMATION PAGE LAYOUT
+// =====================================
+
 function InformationLayout({ children }) {
   return (
     <SiteLayout headerMode="full">
@@ -112,7 +179,10 @@ function InformationLayout({ children }) {
   );
 }
 
+// =====================================
 // ACCOUNT PAGE LAYOUT
+// =====================================
+
 function AccountLayout({ children }) {
   return (
     <SiteLayout headerMode="minimal">
@@ -121,7 +191,10 @@ function AccountLayout({ children }) {
   );
 }
 
+// =====================================
 // PUBLIC STOREFRONT LAYOUT
+// =====================================
+
 function StorefrontLayout({ children }) {
   return (
     <SiteLayout headerMode="storefront">
@@ -130,7 +203,10 @@ function StorefrontLayout({ children }) {
   );
 }
 
+// =====================================
 // APPLICATION ROUTES
+// =====================================
+
 function AppRoutes() {
   return (
     <Routes>
@@ -253,11 +329,42 @@ function AppRoutes() {
   );
 }
 
+// =====================================
 // MAIN APP
+// =====================================
+
 export default function App() {
+  const [showSplash, setShowSplash] = useState(false);
+
+  useEffect(() => {
+    try {
+      const alreadyShown = sessionStorage.getItem(
+        "nexfinity-store-splash"
+      );
+
+      if (!alreadyShown) {
+        sessionStorage.setItem(
+          "nexfinity-store-splash",
+          "true"
+        );
+
+        setShowSplash(true);
+      }
+    } catch {
+      // Continue normally if browser storage is unavailable.
+      setShowSplash(false);
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <AppRoutes />
+
+      {showSplash && (
+        <SplashScreen
+          onComplete={() => setShowSplash(false)}
+        />
+      )}
     </BrowserRouter>
   );
 }
