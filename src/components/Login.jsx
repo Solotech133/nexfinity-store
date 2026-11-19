@@ -54,6 +54,7 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // STEP 1: AUTHENTICATE USER
       const { data, error: loginError } =
         await supabase.auth.signInWithPassword({
           email: cleanEmail,
@@ -70,21 +71,28 @@ export default function Login() {
         );
       }
 
+      // STEP 2: CHECK ADMIN ACCOUNT FIRST
       const { data: admin, error: adminError } = await supabase
         .from("admin_users")
-        .select("id, is_active")
-        .eq("id", data.user.id)
+        .select("user_id, email, role, is_active")
+        .eq("user_id", data.user.id)
         .maybeSingle();
 
       if (adminError) {
         console.error("Admin verification error:", adminError);
+
+        throw new Error(
+          "We couldn't verify your account permissions. Please try again."
+        );
       }
 
-      if (admin && admin.is_active === true) {
+      // STEP 3: REDIRECT ACTIVE ADMIN
+      if (admin?.is_active === true) {
         navigate("/admin", { replace: true });
         return;
       }
 
+      // STEP 4: NON-ADMIN USERS GO TO VENDOR DASHBOARD
       navigate("/dashboard", { replace: true });
     } catch (err) {
       console.error("Login error:", err);
@@ -334,8 +342,11 @@ export default function Login() {
                 <div className="login-card-heading">
 
                   <div className="login-card-icon login-logo">
-  <img src="/images/logo2.png" alt="Nexfinity Store" />
-</div>
+                    <img
+                      src="/images/logo2.png"
+                      alt="Nexfinity Store"
+                    />
+                  </div>
 
                   <span className="login-card-label">
                     WELCOME BACK
