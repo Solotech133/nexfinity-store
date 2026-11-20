@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import "./Hero.css";
 
 const slides = [
@@ -112,9 +113,9 @@ export default function Hero() {
         </p>
 
         <div className="hero-actions">
-          <a href="/register" className="hero-primary">
+          <Link to="/register" className="hero-primary">
             Start selling today
-          </a>
+          </Link>
 
           <a href="#how-it-works" className="hero-secondary">
             See how it works
@@ -158,9 +159,9 @@ export default function Hero() {
 
                   <p>{slide.description}</p>
 
-                  <a href="/register" className="slide-link">
+                  <Link to="/register" className="slide-link">
                     Create your store
-                  </a>
+                  </Link>
                 </div>
               </div>
             ))}
