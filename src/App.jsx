@@ -3,11 +3,13 @@ import { lazy, Suspense, useEffect, useState } from "react";
 
 import {
   BrowserRouter,
+  Link,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
 
+import { supabase } from "./lib/supabase";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import SharedLoadingScreen from "./components/SharedLoadingScreen";
@@ -167,6 +169,72 @@ function HomePage() {
   );
 }
 
+function HomeRoute() {
+  const [sessionStatus, setSessionStatus] = useState("checking");
+  const [retryCount, setRetryCount] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+
+    const checkSession = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) throw error;
+        if (active) {
+          setSessionStatus(
+            data.session ? "authenticated" : "anonymous"
+          );
+        }
+      } catch (err) {
+        console.error("Home session check error:", err);
+        if (active) setSessionStatus("error");
+      }
+    };
+
+    checkSession();
+
+    return () => {
+      active = false;
+    };
+  }, [retryCount]);
+
+  if (sessionStatus === "checking") {
+    return <SharedLoadingScreen />;
+  }
+
+  if (sessionStatus === "authenticated") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  if (sessionStatus === "error") {
+    return (
+      <SiteLayout headerMode="full">
+        <section className="home-session-error" role="alert">
+          <h1>Could not restore your sign-in</h1>
+          <p>
+            Please try again or sign in to open your dashboard.
+          </p>
+          <div className="home-session-error-actions">
+            <button
+              type="button"
+              onClick={() => {
+                setSessionStatus("checking");
+                setRetryCount((count) => count + 1);
+              }}
+            >
+              Try again
+            </button>
+            <Link to="/login">Sign in</Link>
+          </div>
+        </section>
+      </SiteLayout>
+    );
+  }
+
+  return <HomePage />;
+}
+
 // =====================================
 // ACCOUNT PAGE LAYOUT
 // =====================================
@@ -202,7 +270,7 @@ function AppRoutes() {
       {/* HOMEPAGE */}
       <Route
         path="/"
-        element={<HomePage />}
+        element={<HomeRoute />}
       />
 
       {/* INFORMATION PAGES */}
