@@ -172,32 +172,6 @@ a:focus:not(:focus-visible) {
   background: var(--lime-dark);
 }
 
-/* Shared full-screen loading overlay */
-
-.shared-loading-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999999;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  width: 100%;
-  height: 100vh;
-  height: 100dvh;
-  min-height: 100dvh;
-
-  margin: 0;
-  padding: 24px;
-
-  background: #10120D;
-
-  overflow: hidden;
-  isolation: isolate;
-  overscroll-behavior: none;
-}
-
 /* Prevent background scrolling while the shared loader is visible */
 
 body:has(.shared-loading-overlay) {
@@ -380,10 +354,6 @@ select {
 @media (max-width: 768px) {
   body {
     font-size: 13px;
-  }
-
-  .shared-loading-overlay {
-    padding: 20px;
   }
 
   .dashboard-error-card {

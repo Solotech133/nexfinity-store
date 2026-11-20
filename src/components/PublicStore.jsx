@@ -24,19 +24,8 @@ import {
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
+import SharedLoadingScreen from "./SharedLoadingScreen";
 import "./PublicStore.css";
-
-function StoreLoading() {
-  return (
-    <main className="public-store-state">
-      <div className="public-store-loading-mark">
-        <Store size={28} />
-      </div>
-      <LoaderCircle className="public-store-spinner" size={25} />
-      <p>Preparing your shopping experience...</p>
-    </main>
-  );
-}
 
 export default function PublicStore() {
   const { slug } = useParams();
@@ -546,7 +535,11 @@ export default function PublicStore() {
     .join(", ");
 
   // LOADING STATE
-  if (loading) return <StoreLoading />;
+  if (loading) {
+    return (
+      <SharedLoadingScreen label="Preparing this storefront" />
+    );
+  }
 
   // STORE ERROR STATE
   if (error || !store) {

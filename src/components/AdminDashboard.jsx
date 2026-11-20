@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
+import SharedLoadingScreen from "./SharedLoadingScreen";
 import "./AdminDashboard.css";
 
 const formatMoney = (amount, currency = "NGN") =>
@@ -584,13 +585,7 @@ export default function AdminDashboard() {
 
   if (checking) {
     return (
-      <main className="admin-auth-screen">
-        <div className="admin-auth-card">
-          <LoaderCircle className="admin-spinner" size={34} />
-          <h2>Verifying administrator access</h2>
-          <p>Please wait while we secure your workspace.</p>
-        </div>
-      </main>
+      <SharedLoadingScreen label="Verifying administrator access" />
     );
   }
 

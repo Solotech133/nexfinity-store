@@ -62,67 +62,12 @@ const AdminDashboard = lazy(
 const PublicStore = lazy(() => import("./components/PublicStore"));
 
 // =====================================
-// NEXFINITY STORE SPLASH SCREEN
-// =====================================
-
-function SplashScreen({ onComplete }) {
-  const [leaving, setLeaving] = useState(false);
-
-  useEffect(() => {
-    const fadeTimer = setTimeout(() => {
-      setLeaving(true);
-    }, 1900);
-
-    const completeTimer = setTimeout(() => {
-      onComplete();
-    }, 2450);
-
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(completeTimer);
-    };
-  }, [onComplete]);
-
-  return (
-    <div
-      className={`splash-screen ${leaving ? "splash-leaving" : ""}`}
-      aria-label="Welcome to Nexfinity Store"
-      role="status"
-    >
-      <div className="splash-content">
-        <div className="splash-logo-wrapper">
-          <img
-            src="/images/logo.png"
-            alt="Nexfinity Store"
-            className="splash-logo"
-          />
-        </div>
-
-        <h1 className="splash-brand">
-          NEXFINITY <span>STORE</span>
-        </h1>
-
-        <p className="splash-tagline">
-          Your store. Your brand. Your growth.
-        </p>
-
-        <div className="splash-loader">
-          <span />
-          <span />
-          <span />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// =====================================
 // LOADING WRAPPER
 // =====================================
 
-function LoadingRoute({ children }) {
+function LoadingRoute({ children, label = "Loading your page" }) {
   return (
-    <Suspense fallback={<SharedLoadingScreen />}>
+    <Suspense fallback={<SharedLoadingScreen label={label} />}>
       {children}
     </Suspense>
   );
@@ -157,7 +102,11 @@ function SiteLayout({
 function HomePage() {
   return (
     <SiteLayout headerMode="full" showFooter>
-      <Suspense fallback={<SharedLoadingScreen />}>
+      <Suspense
+        fallback={
+          <SharedLoadingScreen label="Loading the homepage" />
+        }
+      >
         <Hero />
         <TrustSection />
         <HowItWorks />
@@ -200,7 +149,9 @@ function HomeRoute() {
   }, [retryCount]);
 
   if (sessionStatus === "checking") {
-    return <SharedLoadingScreen />;
+    return (
+      <SharedLoadingScreen label="Restoring your account" />
+    );
   }
 
   if (sessionStatus === "authenticated") {
@@ -305,7 +256,7 @@ function AppRoutes() {
       <Route
         path="/register"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Preparing registration">
             <AccountLayout>
               <Register />
             </AccountLayout>
@@ -317,7 +268,7 @@ function AppRoutes() {
       <Route
         path="/login"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Opening sign in">
             <AccountLayout>
               <Login />
             </AccountLayout>
@@ -329,7 +280,7 @@ function AppRoutes() {
       <Route
         path="/reset-password"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Preparing password reset">
             <AccountLayout>
               <ResetPassword />
             </AccountLayout>
@@ -341,7 +292,7 @@ function AppRoutes() {
       <Route
         path="/dashboard"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Opening your dashboard">
             <Dashboard />
           </LoadingRoute>
         }
@@ -351,7 +302,7 @@ function AppRoutes() {
       <Route
         path="/admin"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Verifying administrator access">
             <AdminDashboard />
           </LoadingRoute>
         }
@@ -361,7 +312,7 @@ function AppRoutes() {
       <Route
         path="/store/:slug"
         element={
-          <LoadingRoute>
+          <LoadingRoute label="Opening this storefront">
             <StorefrontLayout>
               <PublicStore />
             </StorefrontLayout>
@@ -384,34 +335,9 @@ function AppRoutes() {
 // =====================================
 
 export default function App() {
-  const [showSplash, setShowSplash] = useState(() => {
-    try {
-      const alreadyShown = sessionStorage.getItem(
-        "nexfinity-store-splash"
-      );
-
-      if (alreadyShown) return false;
-
-      sessionStorage.setItem(
-        "nexfinity-store-splash",
-        "true"
-      );
-
-      return true;
-    } catch {
-      return false;
-    }
-  });
-
   return (
     <BrowserRouter>
       <AppRoutes />
-
-      {showSplash && (
-        <SplashScreen
-          onComplete={() => setShowSplash(false)}
-        />
-      )}
     </BrowserRouter>
   );
 }

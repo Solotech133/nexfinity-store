@@ -270,7 +270,9 @@ function StatusPill({ status }) {
 
 // LAZY COMPONENT LOADER
 function ComponentLoader() {
-  return <SharedLoadingScreen />;
+  return (
+    <SharedLoadingScreen label="Loading your dashboard section" />
+  );
 }
 
 // MAIN DASHBOARD
@@ -520,7 +522,9 @@ export default function Dashboard() {
 
   // LOADING SCREEN
   if (loading) {
-    return <SharedLoadingScreen />;
+    return (
+      <SharedLoadingScreen label="Loading your dashboard" />
+    );
   }
 
   // DASHBOARD ERROR
