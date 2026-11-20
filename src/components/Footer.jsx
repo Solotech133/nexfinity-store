@@ -1,8 +1,11 @@
 
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import "./Footer.css";
 
 export default function Footer() {
+  const [currentYear] = useState(() => new Date().getFullYear());
+
   return (
     <footer className="site-footer">
       <div className="footer-main">
@@ -54,7 +57,7 @@ export default function Footer() {
       {/* Bottom footer */}
       <div className="footer-bottom">
         <p>
-          © {new Date().getFullYear()} Nexfinity Store
+          © {currentYear} Nexfinity Store
           All rights reserved.
         </p>
 

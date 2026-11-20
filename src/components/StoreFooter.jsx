@@ -6,6 +6,7 @@ import {
   Mail,
   Globe,
 } from "lucide-react";
+import { useState } from "react";
 
 import "./StoreFooter.css";
 
@@ -38,6 +39,7 @@ export default function StoreFooter({
   variant = "vendor",
   store = null,
 }) {
+  const [currentYear] = useState(() => new Date().getFullYear());
   const isHome = variant === "home";
 
   const phone = String(store?.phone || "").replace(/\D/g, "");
@@ -184,7 +186,7 @@ export default function StoreFooter({
       {/* COPYRIGHT */}
       <div className="premium-footer-bottom">
         <p>
-          © {new Date().getFullYear()}{" "}
+          © {currentYear}{" "}
           {isHome ? "Nexfinity Store" : storeName}.
           {" "}All rights reserved.
         </p>
