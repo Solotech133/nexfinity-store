@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nexfinity-store.vercel.app/sitemap.xml

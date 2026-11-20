@@ -1,6 +1,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { updateSeoMetadata } from "../lib/seo";
 import {
   MapPin,
   Store,
@@ -172,6 +173,26 @@ export default function PublicStore() {
     }).format(Number(price) || 0);
 
   const storeName = store?.store_name || store?.business_name || "the store";
+
+  useEffect(() => {
+    if (!store) return;
+
+    const name = store.store_name || store.business_name || "Online Store";
+    const description = (
+      store.business_description ||
+      `Shop products from ${name} on NexfinityStore.`
+    )
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 160);
+
+    updateSeoMetadata({
+      title: `${name} | Shop online on NexfinityStore`,
+      description,
+      canonical: window.location.pathname,
+      image: store.store_logo_url,
+    });
+  }, [store]);
 
   // VENDOR WHATSAPP LINK
   const getWhatsAppLink = (message) => {

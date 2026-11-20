@@ -7,9 +7,11 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 
 import { supabase } from "./lib/supabase";
+import { updateSeoMetadata } from "./lib/seo";
 import Header from "./components/Header";
 import Footer from "./components/Footer";
 import SharedLoadingScreen from "./components/SharedLoadingScreen";
@@ -60,6 +62,70 @@ const AdminDashboard = lazy(
 
 // PUBLIC STORE
 const PublicStore = lazy(() => import("./components/PublicStore"));
+
+const publicRouteMetadata = {
+  "/": {
+    title: "NexfinityStore | Your Online Marketplace",
+    description:
+      "Discover products, explore online stores and shop from trusted vendors on NexfinityStore.",
+  },
+  "/contact": {
+    title: "Contact NexfinityStore",
+    description:
+      "Contact the NexfinityStore team for help with online stores, vendor accounts and shopping.",
+  },
+  "/privacy": {
+    title: "Privacy Policy | NexfinityStore",
+    description:
+      "Read how NexfinityStore collects, uses and protects account and shopping information.",
+  },
+  "/terms": {
+    title: "Terms of Service | NexfinityStore",
+    description:
+      "Review the terms for using NexfinityStore as a vendor or shopper.",
+  },
+};
+
+function SeoManager() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    const normalizedPath = pathname.replace(/\/+$/, "") || "/";
+    const isPrivateRoute = [
+      "/register",
+      "/login",
+      "/reset-password",
+      "/dashboard",
+      "/admin",
+    ].includes(normalizedPath);
+    const isStoreRoute = normalizedPath.startsWith("/store/");
+    const isPublicRoute =
+      isStoreRoute ||
+      Object.prototype.hasOwnProperty.call(
+        publicRouteMetadata,
+        normalizedPath
+      );
+    const metadata = publicRouteMetadata[normalizedPath] || {
+      title: isStoreRoute
+        ? "Online Store | NexfinityStore"
+        : "Page not found | NexfinityStore",
+      description: isStoreRoute
+        ? "Explore products and shop directly from this vendor's online store on NexfinityStore."
+        : "Explore NexfinityStore online stores and products from trusted vendors.",
+    };
+
+    updateSeoMetadata({
+      ...metadata,
+      canonical: normalizedPath,
+      robots:
+        isPrivateRoute || !isPublicRoute
+          ? "noindex, nofollow"
+          : "index, follow",
+    });
+  }, [pathname]);
+
+  return null;
+}
 
 // =====================================
 // LOADING WRAPPER
@@ -337,6 +403,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
+      <SeoManager />
       <AppRoutes />
     </BrowserRouter>
   );
