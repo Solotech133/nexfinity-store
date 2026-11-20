@@ -1,5 +1,6 @@
 {
-  "name": "nexfinity-ministore",
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "nexfinity-store",
   "private": true,
   "version": "0.0.0",
   "type": "module",

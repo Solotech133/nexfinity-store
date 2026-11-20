@@ -1,12 +1,11 @@
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Search,
   ShoppingBag,
   Package,
   Clock,
   CheckCircle2,
-  XCircle,
   Eye,
   RefreshCw,
   LoaderCircle,
@@ -15,7 +14,6 @@ import {
   MapPin,
   Phone,
   User,
-  CalendarDays,
   MessageSquare,
   ChevronDown,
 } from "lucide-react";
@@ -39,25 +37,32 @@ const statusLabels = {
   cancelled: "Cancelled",
 };
 
-const formatPrice = (amount) =>
-  new Intl.NumberFormat("en-NG", {
+const formatPrice = (amount) => {
+  const parsedAmount = Number(amount);
+  return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency: "NGN",
     maximumFractionDigits: 2,
-  }).format(Number(amount || 0));
+  }).format(Number.isFinite(parsedAmount) ? parsedAmount : 0);
+};
 
 const formatDate = (date) => {
   if (!date) return "Date unavailable";
 
+  const parsedDate = new Date(date);
+  if (Number.isNaN(parsedDate.getTime())) return "Date unavailable";
+
   return new Intl.DateTimeFormat("en-NG", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(date));
+  }).format(parsedDate);
 };
 
 const formatPhone = (phone) => phone || "Not provided";
 
 export default function OrdersManager({ vendor }) {
+  const vendorId = vendor?.id;
+  const loadRequestId = useRef(0);
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,12 +77,17 @@ export default function OrdersManager({ vendor }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const loadOrders = useCallback(async (showRefresh = false) => {
-    if (!vendor?.id) {
+    if (!vendorId) {
+      loadRequestId.current += 1;
       setOrders([]);
       setOrderItems([]);
       setLoading(false);
+      setRefreshing(false);
+      setSelectedOrder(null);
       return;
     }
+
+    const requestId = ++loadRequestId.current;
 
     if (showRefresh) {
       setRefreshing(true);
@@ -104,16 +114,18 @@ export default function OrdersManager({ vendor }) {
           created_at,
           updated_at
         `)
-        .eq("vendor_id", vendor.id)
+        .eq("vendor_id", vendorId)
         .order("created_at", { ascending: false });
 
       if (orderError) throw orderError;
 
       const loadedOrders = orderData || [];
-      setOrders(loadedOrders);
 
       if (loadedOrders.length === 0) {
+        if (requestId !== loadRequestId.current) return;
+        setOrders([]);
         setOrderItems([]);
+        setSelectedOrder(null);
         return;
       }
 
@@ -136,21 +148,47 @@ export default function OrdersManager({ vendor }) {
 
       if (itemError) throw itemError;
 
+      if (requestId !== loadRequestId.current) return;
+      setOrders(loadedOrders);
       setOrderItems(itemData || []);
+      setSelectedOrder((current) =>
+        current
+          ? loadedOrders.find((order) => order.id === current.id) || null
+          : null
+      );
     } catch (err) {
+      if (requestId !== loadRequestId.current) return;
       console.error("Order loading error:", err);
       setError(
         err?.message || "Unable to load orders. Please try again."
       );
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (requestId === loadRequestId.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  }, [vendor?.id]);
+  }, [vendorId]);
 
   useEffect(() => {
     loadOrders();
+    return () => {
+      loadRequestId.current += 1;
+    };
   }, [loadOrders]);
+
+  useEffect(() => {
+    if (!selectedOrder) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setSelectedOrder(null);
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [selectedOrder]);
 
   const filteredOrders = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -204,6 +242,11 @@ export default function OrdersManager({ vendor }) {
       return;
     }
 
+    if (!vendorId) {
+      setError("The store could not be identified.");
+      return;
+    }
+
     if (order.status === newStatus) return;
 
     setError("");
@@ -218,7 +261,7 @@ export default function OrdersManager({ vendor }) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", order.id)
-        .eq("vendor_id", vendor.id)
+        .eq("vendor_id", vendorId)
         .select("id, status")
         .single();
 
@@ -265,6 +308,16 @@ export default function OrdersManager({ vendor }) {
   };
 
   const copyOrderReference = async (reference) => {
+    if (!reference) {
+      setError("This order does not have an order reference.");
+      return;
+    }
+
+    if (!navigator?.clipboard?.writeText) {
+      setError("Clipboard access is not available in this browser.");
+      return;
+    }
+
     try {
       await navigator.clipboard.writeText(reference);
       setSuccess("Order reference copied.");

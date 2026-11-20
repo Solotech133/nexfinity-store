@@ -168,18 +168,6 @@ function HomePage() {
 }
 
 // =====================================
-// INFORMATION PAGE LAYOUT
-// =====================================
-
-function InformationLayout({ children }) {
-  return (
-    <SiteLayout headerMode="full">
-      {children}
-    </SiteLayout>
-  );
-}
-
-// =====================================
 // ACCOUNT PAGE LAYOUT
 // =====================================
 
@@ -222,9 +210,7 @@ function AppRoutes() {
         path="/contact"
         element={
           <LoadingRoute>
-            <InformationLayout>
-              <Contact />
-            </InformationLayout>
+            <Contact />
           </LoadingRoute>
         }
       />
@@ -233,9 +219,7 @@ function AppRoutes() {
         path="/privacy"
         element={
           <LoadingRoute>
-            <InformationLayout>
-              <PrivacyPolicy />
-            </InformationLayout>
+            <PrivacyPolicy />
           </LoadingRoute>
         }
       />
@@ -244,9 +228,7 @@ function AppRoutes() {
         path="/terms"
         element={
           <LoadingRoute>
-            <InformationLayout>
-              <TermsOfService />
-            </InformationLayout>
+            <TermsOfService />
           </LoadingRoute>
         }
       />

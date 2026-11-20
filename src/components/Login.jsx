@@ -81,6 +81,16 @@ export default function Login() {
       if (adminError) {
         console.error("Admin verification error:", adminError);
 
+        const { error: signOutError } =
+          await supabase.auth.signOut({ scope: "local" });
+
+        if (signOutError) {
+          console.error(
+            "Unable to clear session after permission verification failed:",
+            signOutError
+          );
+        }
+
         throw new Error(
           "We couldn't verify your account permissions. Please try again."
         );

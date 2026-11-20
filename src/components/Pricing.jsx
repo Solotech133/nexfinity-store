@@ -30,7 +30,7 @@ const plans = [
     plan: "free",
   },
   {
-    name: "Starter",
+    name: "Growth",
     subtitle: "Everything you need to grow your online presence.",
     price: "₦1,000",
     period: "Per month",
@@ -45,8 +45,8 @@ const plans = [
       "More store customisation",
       "Improved store management",
     ],
-    button: "Choose Starter",
-    plan: "starter",
+    button: "Choose Growth",
+    plan: "growth",
   },
   {
     name: "Business",

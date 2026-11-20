@@ -12,7 +12,6 @@ import {
   ImagePlus,
   Palette,
   Upload,
-  X,
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
@@ -28,21 +27,43 @@ const ALLOWED_IMAGE_TYPES = [
   "image/gif",
 ];
 
-export default function StoreProfile({ vendor, setVendor }) {
-  const [formData, setFormData] = useState({
-    business_name: "",
-    store_name: "",
-    business_category: "",
-    business_description: "",
-    phone: "",
-    business_address: "",
-    city: "",
-    state: "",
-    store_brand_color: DEFAULT_BRAND_COLOR,
-  });
+function getInitialFormData(vendor) {
+  return {
+    business_name: vendor?.business_name || "",
+    store_name: vendor?.store_name || "",
+    business_category: vendor?.business_category || "",
+    business_description: vendor?.business_description || "",
+    phone: vendor?.phone || "",
+    business_address: vendor?.business_address || "",
+    city: vendor?.city || "",
+    state: vendor?.state || "",
+    store_brand_color:
+      vendor?.store_brand_color || DEFAULT_BRAND_COLOR,
+  };
+}
 
-  const [logoPreview, setLogoPreview] = useState("");
-  const [bannerPreview, setBannerPreview] = useState("");
+export default function StoreProfile({ vendor, setVendor }) {
+  return (
+    <StoreProfileForm
+      key={vendor?.id ?? "no-vendor"}
+      vendor={vendor}
+      setVendor={setVendor}
+    />
+  );
+}
+
+function StoreProfileForm({ vendor, setVendor }) {
+  const [formData, setFormData] = useState(() =>
+    getInitialFormData(vendor)
+  );
+
+  const [logoPreview, setLogoPreview] = useState(
+    () => vendor?.store_logo_url || ""
+  );
+
+  const [bannerPreview, setBannerPreview] = useState(
+    () => vendor?.store_banner_url || ""
+  );
 
   const [uploading, setUploading] = useState({
     logo: false,
@@ -56,26 +77,8 @@ export default function StoreProfile({ vendor, setVendor }) {
   const logoObjectUrl = useRef(null);
   const bannerObjectUrl = useRef(null);
 
-  // LOAD EXISTING VENDOR INFORMATION
-  useEffect(() => {
-    if (!vendor) return;
-
-    setFormData({
-      business_name: vendor.business_name || "",
-      store_name: vendor.store_name || "",
-      business_category: vendor.business_category || "",
-      business_description: vendor.business_description || "",
-      phone: vendor.phone || "",
-      business_address: vendor.business_address || "",
-      city: vendor.city || "",
-      state: vendor.state || "",
-      store_brand_color:
-        vendor.store_brand_color || DEFAULT_BRAND_COLOR,
-    });
-
-    setLogoPreview(vendor.store_logo_url || "");
-    setBannerPreview(vendor.store_banner_url || "");
-  }, [vendor]);
+  // Vendor-backed state is initialized when the keyed form mounts.
+  // A new vendor ID remounts this form with the new vendor's data.
 
   // CLEAN UP TEMPORARY IMAGE PREVIEWS
   useEffect(() => {
@@ -194,10 +197,8 @@ export default function StoreProfile({ vendor, setVendor }) {
       }
 
       // CREATE A UNIQUE STORAGE FILE PATH
-      const extension = file.name
-        .split(".")
-        .pop()
-        ?.toLowerCase() || "jpg";
+      const extension =
+        file.name.split(".").pop()?.toLowerCase() || "jpg";
 
       const safeExtension = /^[a-z0-9]+$/.test(extension)
         ? extension

@@ -41,7 +41,7 @@ const emptyForm = {
 
 const planLimits = {
   free: 10,
-  starter: 50,
+  starter: 10,
   growth: 200,
   business: Infinity,
 };
@@ -61,6 +61,33 @@ const formatPrice = (price) =>
     currency: "NGN",
     maximumFractionDigits: 2,
   }).format(Number(price || 0));
+
+async function fetchVendorProducts(vendorId) {
+  if (!vendorId) return [];
+
+  const { data, error } = await supabase
+    .from("products")
+    .select(`
+      id,
+      vendor_id,
+      name,
+      description,
+      price,
+      compare_at_price,
+      category,
+      image_url,
+      is_featured,
+      is_available,
+      created_at,
+      updated_at
+    `)
+    .eq("vendor_id", vendorId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return data || [];
+}
 
 function getStoragePath(imageUrl, vendorId) {
   if (!imageUrl) return null;
@@ -87,10 +114,22 @@ function getStoragePath(imageUrl, vendorId) {
 }
 
 export default function ProductManager({ vendor }) {
+  return (
+    <ProductManagerContent
+      key={vendor?.id ?? "no-vendor"}
+      vendor={vendor}
+    />
+  );
+}
+
+function ProductManagerContent({ vendor }) {
   const fileInputRef = useRef(null);
+  const saveInProgress = useRef(false);
+
+  const vendorId = vendor?.id;
 
   const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(Boolean(vendorId));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
@@ -114,14 +153,63 @@ export default function ProductManager({ vendor }) {
     .replace(/\s+plan$/, "")
     .trim();
 
-  const productLimit = planLimits[plan] ?? planLimits.free;
-  const isUnlimited = productLimit === Infinity;
-  const canAddProduct =
-    isUnlimited || products.length < productLimit;
+  const configuredProductLimit = vendor?.product_limit;
+  const productLimit =
+    configuredProductLimit == null
+      ? planLimits[plan] ?? planLimits.free
+      : Number(configuredProductLimit);
+  const effectiveProductLimit =
+    productLimit === -1 || productLimit === 2147483647
+      ? Infinity
+      : Number.isFinite(productLimit) && productLimit >= 0
+        ? productLimit
+        : planLimits[plan] ?? planLimits.free;
+  const isUnlimited = effectiveProductLimit === Infinity;
 
-  // Load products.
+  const canAddProduct =
+    isUnlimited || products.length < effectiveProductLimit;
+
+  // Initial product loading.
+  // State updates happen after the asynchronous request completes.
+  useEffect(() => {
+    if (!vendorId) return;
+
+    let isMounted = true;
+
+    const loadInitialProducts = async () => {
+      try {
+        const data = await fetchVendorProducts(vendorId);
+
+        if (isMounted) {
+          setProducts(data);
+          setError("");
+        }
+      } catch (err) {
+        console.error("Product loading error:", err);
+
+        if (isMounted) {
+          setError(
+            "Unable to load your products. Please refresh and try again."
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadInitialProducts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [vendorId]);
+
+  // Reload products after creating, editing, deleting,
+  // or changing product availability.
   const loadProducts = useCallback(async () => {
-    if (!vendor?.id) {
+    if (!vendorId) {
       setProducts([]);
       setLoading(false);
       return;
@@ -131,28 +219,8 @@ export default function ProductManager({ vendor }) {
     setError("");
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from("products")
-        .select(`
-          id,
-          vendor_id,
-          name,
-          description,
-          price,
-          compare_at_price,
-          category,
-          image_url,
-          is_featured,
-          is_available,
-          created_at,
-          updated_at
-        `)
-        .eq("vendor_id", vendor.id)
-        .order("created_at", { ascending: false });
-
-      if (fetchError) throw fetchError;
-
-      setProducts(data || []);
+      const data = await fetchVendorProducts(vendorId);
+      setProducts(data);
     } catch (err) {
       console.error("Product loading error:", err);
 
@@ -162,11 +230,7 @@ export default function ProductManager({ vendor }) {
     } finally {
       setLoading(false);
     }
-  }, [vendor?.id]);
-
-  useEffect(() => {
-    loadProducts();
-  }, [loadProducts]);
+  }, [vendorId]);
 
   // Clean up temporary image previews.
   useEffect(() => {
@@ -321,7 +385,7 @@ export default function ProductManager({ vendor }) {
         "jpg";
 
       const fileName = `${crypto.randomUUID()}.${fileExtension}`;
-      const filePath = `${vendor.id}/${fileName}`;
+      const filePath = `${vendorId}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from("product-images")
@@ -351,11 +415,15 @@ export default function ProductManager({ vendor }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (saveInProgress.current || saving) return;
+
     setError("");
     setSuccess("");
 
-    if (!vendor?.id) {
-      setError("Vendor information is missing. Please sign in again.");
+    if (!vendorId) {
+      setError(
+        "Vendor information is missing. Please sign in again."
+      );
       return;
     }
 
@@ -410,6 +478,7 @@ export default function ProductManager({ vendor }) {
       return;
     }
 
+    saveInProgress.current = true;
     setSaving(true);
 
     let uploadedImageUrl = null;
@@ -447,7 +516,7 @@ export default function ProductManager({ vendor }) {
           .from("products")
           .update(payload)
           .eq("id", editingId)
-          .eq("vendor_id", vendor.id)
+          .eq("vendor_id", vendorId)
           .select()
           .single();
       } else {
@@ -455,7 +524,7 @@ export default function ProductManager({ vendor }) {
           .from("products")
           .insert({
             ...payload,
-            vendor_id: vendor.id,
+            vendor_id: vendorId,
           })
           .select()
           .single();
@@ -465,7 +534,7 @@ export default function ProductManager({ vendor }) {
         if (uploadedImageUrl) {
           const newPath = getStoragePath(
             uploadedImageUrl,
-            vendor.id
+            vendorId
           );
 
           if (newPath) {
@@ -492,7 +561,7 @@ export default function ProductManager({ vendor }) {
         ) {
           const oldPath = getStoragePath(
             oldImageUrl,
-            vendor.id
+            vendorId
           );
 
           if (oldPath) {
@@ -531,6 +600,7 @@ export default function ProductManager({ vendor }) {
           "Unable to save this product. Please try again."
       );
     } finally {
+      saveInProgress.current = false;
       setSaving(false);
     }
   };
@@ -552,14 +622,14 @@ export default function ProductManager({ vendor }) {
         .from("products")
         .delete()
         .eq("id", product.id)
-        .eq("vendor_id", vendor.id);
+        .eq("vendor_id", vendorId);
 
       if (deleteError) throw deleteError;
 
       if (product.image_url) {
         const imagePath = getStoragePath(
           product.image_url,
-          vendor.id
+          vendorId
         );
 
         if (imagePath) {
@@ -602,7 +672,7 @@ export default function ProductManager({ vendor }) {
         updated_at: new Date().toISOString(),
       })
       .eq("id", product.id)
-      .eq("vendor_id", vendor.id);
+      .eq("vendor_id", vendorId);
 
     if (updateError) {
       console.error("Availability update error:", updateError);
@@ -621,12 +691,14 @@ export default function ProductManager({ vendor }) {
 
   const usageText = isUnlimited
     ? `${products.length} products · Unlimited`
-    : `${products.length} of ${productLimit} products`;
+    : `${products.length} of ${effectiveProductLimit} products`;
 
   const usagePercentage = isUnlimited
     ? 0
     : Math.min(
-        (products.length / productLimit) * 100,
+        effectiveProductLimit > 0
+          ? (products.length / effectiveProductLimit) * 100
+          : 100,
         100
       );
 
@@ -680,7 +752,7 @@ export default function ProductManager({ vendor }) {
           </div>
         )}
 
-        {!isUnlimited && products.length >= productLimit && (
+        {!isUnlimited && products.length >= effectiveProductLimit && (
           <p className="product-limit-message">
             You've reached your product limit. Upgrade your plan
             to add more.

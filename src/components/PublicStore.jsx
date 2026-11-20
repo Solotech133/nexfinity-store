@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   MapPin,
@@ -56,6 +56,7 @@ export default function PublicStore() {
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [submittingOrder, setSubmittingOrder] = useState(false);
+  const submissionInProgress = useRef(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [orderResult, setOrderResult] = useState(null);
 
@@ -309,7 +310,7 @@ export default function PublicStore() {
     event.preventDefault();
     setCheckoutError("");
 
-    if (submittingOrder) return;
+    if (submissionInProgress.current || submittingOrder) return;
 
     if (!cartItems.length) {
       setCheckoutError("Your shopping cart is empty.");
@@ -326,15 +327,70 @@ export default function PublicStore() {
       return;
     }
 
+    submissionInProgress.current = true;
     setSubmittingOrder(true);
 
     try {
-      const orderedProducts = cartItems.map((item) => ({
-        name: item.name,
-        quantity: item.quantity,
-        price: Number(item.price),
-        lineTotal: Number(item.price) * item.quantity,
-      }));
+      const { data: currentProducts, error: productError } = await supabase
+        .from("products")
+        .select("id, name, price, is_available")
+        .eq("vendor_id", store.id)
+        .in("id", cartItems.map((item) => item.id));
+
+      if (productError) throw productError;
+
+      const currentProductsById = new Map(
+        (currentProducts || []).map((product) => [product.id, product])
+      );
+      const cartProductIds = new Set(cartItems.map((item) => item.id));
+      const syncProducts = (current) =>
+        current.flatMap((product) => {
+          const currentProduct = currentProductsById.get(product.id);
+
+          if (cartProductIds.has(product.id) && !currentProduct) {
+            return [];
+          }
+
+          return currentProduct
+            ? [{ ...product, ...currentProduct }]
+            : [product];
+        });
+      const unavailableProduct = cartItems.some((item) => {
+        const currentProduct = currentProductsById.get(item.id);
+        return !currentProduct || !currentProduct.is_available;
+      });
+
+      if (unavailableProduct) {
+        setProducts(syncProducts);
+        throw new Error(
+          "A product in your cart is no longer available. Review your cart and try again."
+        );
+      }
+
+      const priceChanged = cartItems.some(
+        (item) =>
+          Number(currentProductsById.get(item.id).price) !==
+          Number(item.price)
+      );
+
+      if (priceChanged) {
+        setProducts(syncProducts);
+        throw new Error(
+          "Product prices have changed. Review your updated cart total before placing the order."
+        );
+      }
+
+      const orderedProducts = cartItems.map((item) => {
+        const currentProduct = currentProductsById.get(item.id);
+        const price = Number(currentProduct.price);
+
+        return {
+          name: currentProduct.name,
+          quantity: item.quantity,
+          price,
+          lineTotal: price * item.quantity,
+        };
+      });
 
       const items = cartItems.map((item) => ({
         product_id: item.id,
@@ -424,6 +480,7 @@ export default function PublicStore() {
         submitError.message || "Something went wrong. Please try again."
       );
     } finally {
+      submissionInProgress.current = false;
       setSubmittingOrder(false);
     }
   };
