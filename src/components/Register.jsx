@@ -152,8 +152,28 @@ export default function Register() {
         );
       }
 
+      if (data.user && plan !== "starter") {
+        try {
+          localStorage.setItem(
+            `nexfinity-payment-intro-pending:${data.user.id}`,
+            plan
+          );
+        } catch (storageError) {
+          console.error(
+            "Unable to remember the selected payment plan:",
+            storageError
+          );
+        }
+      }
+
       if (data.session) {
-        navigate("/dashboard", { replace: true });
+        navigate("/dashboard", {
+          replace: true,
+          state:
+            plan === "starter"
+              ? null
+              : { paymentIntroPlan: plan },
+        });
         return;
       }
 

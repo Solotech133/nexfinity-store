@@ -7,7 +7,11 @@ import {
   useCallback,
 } from "react";
 
-import { Link, useNavigate } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import {
   LayoutDashboard,
@@ -26,6 +30,7 @@ import {
   CheckCircle2,
   Clock3,
   AlertCircle,
+  LoaderCircle,
   UserRound,
   MapPin,
   Mail,
@@ -277,7 +282,9 @@ function ComponentLoader() {
 
 // MAIN DASHBOARD
 export default function Dashboard() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const signupPaymentPlan = location.state?.paymentIntroPlan;
 
   const [vendor, setVendor] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -285,6 +292,12 @@ export default function Dashboard() {
   const [activePage, setActivePage] = useState("Overview");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [paymentIntroPlan, setPaymentIntroPlan] = useState("");
+  const [paymentIntroSettings, setPaymentIntroSettings] =
+    useState(null);
+  const [paymentIntroLoading, setPaymentIntroLoading] =
+    useState(false);
+  const [paymentIntroError, setPaymentIntroError] = useState("");
 
   // DASHBOARD THEME
   const [theme, setTheme] = useState(() => {
@@ -414,6 +427,46 @@ export default function Dashboard() {
 
         if (!mounted) return;
 
+        let introPlan = normalizePlan(
+          signupPaymentPlan ||
+            data.requested_plan ||
+            data.plan
+        );
+        let introAlreadySeen = false;
+
+        try {
+          const pendingIntroPlan = localStorage.getItem(
+            `nexfinity-payment-intro-pending:${user.id}`
+          );
+          introPlan = normalizePlan(
+            signupPaymentPlan ||
+              pendingIntroPlan ||
+              data.requested_plan ||
+              data.plan
+          );
+
+          if (isPaidPlan(introPlan)) {
+            introAlreadySeen =
+              localStorage.getItem(
+                `nexfinity-payment-intro-seen:${user.id}`
+              ) === introPlan;
+          }
+        } catch (storageError) {
+          console.error(
+            "Payment intro preference error:",
+            storageError
+          );
+        }
+
+        if (
+          isPaidPlan(introPlan) &&
+          !hasActivePaidSubscription(data) &&
+          latestPayment?.status !== "pending" &&
+          !introAlreadySeen
+        ) {
+          setPaymentIntroPlan(introPlan);
+        }
+
         setVendor(data);
 
         setActivePage(
@@ -449,7 +502,55 @@ export default function Dashboard() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, signupPaymentPlan]);
+
+  useEffect(() => {
+    if (!paymentIntroPlan) return undefined;
+
+    let mounted = true;
+
+    const loadPaymentSettings = async () => {
+      setPaymentIntroLoading(true);
+      setPaymentIntroError("");
+      setPaymentIntroSettings(null);
+
+      try {
+        const { data, error: settingsError } = await supabase
+          .from("payment_settings")
+          .select(
+            "bank_name, account_name, account_number, transfer_instructions"
+          )
+          .eq("id", 1)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (settingsError) throw settingsError;
+
+        if (mounted) {
+          setPaymentIntroSettings(data);
+        }
+      } catch (err) {
+        console.error("Payment details loading error:", err);
+
+        if (mounted) {
+          setPaymentIntroError(
+            err?.message ||
+              "Unable to load payment details. You can continue and check them later in My Plan."
+          );
+        }
+      } finally {
+        if (mounted) {
+          setPaymentIntroLoading(false);
+        }
+      }
+    };
+
+    loadPaymentSettings();
+
+    return () => {
+      mounted = false;
+    };
+  }, [paymentIntroPlan]);
 
   // LOG OUT
   const handleLogout = async () => {
@@ -474,6 +575,25 @@ export default function Dashboard() {
       setError("We couldn't log you out. Please try again.");
       setSigningOut(false);
     }
+  };
+
+  const handleContinueFromPaymentIntro = () => {
+    try {
+      localStorage.setItem(
+        `nexfinity-payment-intro-seen:${vendor.auth_user_id}`,
+        paymentIntroPlan
+      );
+      localStorage.removeItem(
+        `nexfinity-payment-intro-pending:${vendor.auth_user_id}`
+      );
+    } catch (storageError) {
+      console.error(
+        "Unable to save payment intro preference:",
+        storageError
+      );
+    }
+
+    setPaymentIntroPlan("");
   };
 
   // CHANGE DASHBOARD PAGE
@@ -594,6 +714,137 @@ export default function Dashboard() {
 
   return (
     <div className="dashboard-shell" data-theme={theme}>
+      {paymentIntroPlan && (
+        <div className="dashboard-payment-intro-backdrop">
+          <section
+            className="dashboard-payment-intro"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="dashboard-payment-intro-title"
+            onKeyDown={(event) => {
+              if (event.key === "Tab") {
+                event.preventDefault();
+                event.currentTarget
+                  .querySelector("button")
+                  ?.focus();
+              }
+            }}
+          >
+            <div className="dashboard-payment-intro-heading">
+              <span className="dashboard-payment-intro-icon">
+                <CreditCard size={22} />
+              </span>
+              <span className="dashboard-eyebrow">
+                PAYMENT DETAILS
+              </span>
+              <h2 id="dashboard-payment-intro-title">
+                Your {planDetails[paymentIntroPlan]?.name} plan
+              </h2>
+              <p>
+                Review the transfer details for your selected plan
+                before continuing to your dashboard.
+              </p>
+            </div>
+
+            <div className="dashboard-payment-intro-summary">
+              <div>
+                <small>Selected plan</small>
+                <strong>
+                  {planDetails[paymentIntroPlan]?.name}
+                </strong>
+              </div>
+              <div>
+                <small>Plan price</small>
+                <strong>
+                  {planDetails[paymentIntroPlan]?.price}
+                </strong>
+              </div>
+            </div>
+
+            {paymentIntroLoading && (
+              <div
+                className="dashboard-payment-intro-message"
+                role="status"
+              >
+                <LoaderCircle
+                  className="dashboard-payment-intro-spinner"
+                  size={19}
+                />
+                Loading bank transfer details...
+              </div>
+            )}
+
+            {paymentIntroError && (
+              <div
+                className="dashboard-payment-intro-message warning"
+                role="alert"
+              >
+                <AlertCircle size={19} />
+                <span>{paymentIntroError}</span>
+              </div>
+            )}
+
+            {!paymentIntroLoading &&
+              !paymentIntroError &&
+              !paymentIntroSettings && (
+                <div
+                  className="dashboard-payment-intro-message warning"
+                  role="status"
+                >
+                  <AlertCircle size={19} />
+                  <span>
+                    Bank transfer details are not configured yet.
+                    You can continue and check again later in My Plan.
+                  </span>
+                </div>
+              )}
+
+            {paymentIntroSettings && (
+              <div className="dashboard-payment-intro-bank">
+                <h3>Official payment account</h3>
+                <div>
+                  <small>Bank name</small>
+                  <strong>
+                    {paymentIntroSettings.bank_name}
+                  </strong>
+                </div>
+                <div>
+                  <small>Account name</small>
+                  <strong>
+                    {paymentIntroSettings.account_name}
+                  </strong>
+                </div>
+                <div>
+                  <small>Account number</small>
+                  <strong className="dashboard-payment-intro-account">
+                    {paymentIntroSettings.account_number}
+                  </strong>
+                </div>
+                {paymentIntroSettings.transfer_instructions && (
+                  <p>
+                    {paymentIntroSettings.transfer_instructions}
+                  </p>
+                )}
+              </div>
+            )}
+
+            <p className="dashboard-payment-intro-note">
+              You can continue now. Payment submission is available
+              from My Plan after your store is approved.
+            </p>
+
+            <button
+              type="button"
+              className="dashboard-payment-intro-continue"
+              onClick={handleContinueFromPaymentIntro}
+              autoFocus
+            >
+              Continue to dashboard
+              <ArrowUpRight size={17} />
+            </button>
+          </section>
+        </div>
+      )}
 
       {/* MOBILE SIDEBAR OVERLAY */}
       {sidebarOpen && (
