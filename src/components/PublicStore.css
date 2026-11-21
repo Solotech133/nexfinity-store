@@ -6,9 +6,9 @@
 ===================================================== */
 
 :root {
-  --store-lime: #b8f500;
-  --store-lime-soft: #edf5d6;
-  --store-olive: #617900;
+  --store-lime: var(--store-brand-color, #B8F500);
+  --store-lime-soft: color-mix(in srgb, var(--store-brand-color, #B8F500) 14%, #FFFFFF);
+  --store-olive: var(--store-brand-color, #617900);
   --store-dark: #20251a;
   --store-dark-soft: #303923;
   --store-muted: #777d6c;
@@ -43,6 +43,16 @@
 
 .public-store-page button {
   -webkit-tap-highlight-color: transparent;
+}
+
+.public-store-page .public-store-brand-icon,
+.public-store-page .public-store-featured-image > span,
+.public-store-page .public-store-order-button,
+.public-store-page .public-store-checkout-button,
+.public-store-page .public-store-cart-trigger,
+.public-store-page .public-store-nav-item.active,
+.public-store-page .public-store-done-button {
+  color: var(--store-brand-contrast, #20251A);
 }
 
 .public-store-page img {

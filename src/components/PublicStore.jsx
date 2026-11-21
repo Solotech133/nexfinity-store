@@ -28,6 +28,36 @@ import { supabase } from "../lib/supabase";
 import SharedLoadingScreen from "./SharedLoadingScreen";
 import "./PublicStore.css";
 
+const DEFAULT_STORE_BRAND_COLOR = "#B8F500";
+
+const normalizeNigerianWhatsAppNumber = (phone) => {
+  if (!phone) return null;
+
+  let number = String(phone).replace(/\D/g, "");
+
+  if (number.startsWith("0")) {
+    number = `234${number.slice(1)}`;
+  } else if (number.length === 10) {
+    number = `234${number}`;
+  }
+
+  return /^234[789]\d{9}$/.test(number) ? number : null;
+};
+
+const getBrandContrastColor = (hexColor) => {
+  if (!/^#[0-9A-Fa-f]{6}$/.test(hexColor || "")) {
+    return "#20251A";
+  }
+
+  const red = parseInt(hexColor.slice(1, 3), 16);
+  const green = parseInt(hexColor.slice(3, 5), 16);
+  const blue = parseInt(hexColor.slice(5, 7), 16);
+  const luminance =
+    (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
+
+  return luminance > 0.62 ? "#20251A" : "#FFFFFF";
+};
+
 export default function PublicStore() {
   const { slug } = useParams();
 
@@ -49,6 +79,7 @@ export default function PublicStore() {
   const submissionInProgress = useRef(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [orderResult, setOrderResult] = useState(null);
+  const [copiedReference, setCopiedReference] = useState(false);
 
   const [customer, setCustomer] = useState({
     name: "",
@@ -70,28 +101,10 @@ export default function PublicStore() {
       setCart({});
 
       try {
-        const { data, error: fetchError } = await supabase
-          .from("vendors")
-          .select(`
-            id,
-            store_name,
-            store_slug,
-            business_name,
-            business_category,
-            business_description,
-            business_address,
-            city,
-            state,
-            phone,
-            store_logo_url,
-            store_banner_url,
-            store_brand_color,
-            is_store_published,
-            approval_status
-          `)
-          .eq("store_slug", slug)
-          .eq("is_store_published", true)
-          .maybeSingle();
+        const { data, error: fetchError } = await supabase.rpc(
+          "get_public_store_by_slug",
+          { p_store_slug: slug }
+        );
 
         if (!isMounted) return;
 
@@ -102,13 +115,15 @@ export default function PublicStore() {
           return;
         }
 
-        if (!data) {
+        const storeData = Array.isArray(data) ? data[0] : data;
+
+        if (!storeData) {
           setError("This store is unavailable or has not been published yet.");
           setLoading(false);
           return;
         }
 
-        setStore(data);
+        setStore(storeData);
 
         const {
           data: productData,
@@ -127,7 +142,7 @@ export default function PublicStore() {
             is_available,
             created_at
           `)
-          .eq("vendor_id", data.id)
+          .eq("vendor_id", storeData.id)
           .eq("is_available", true)
           .order("created_at", { ascending: false });
 
@@ -195,19 +210,9 @@ export default function PublicStore() {
 
   // VENDOR WHATSAPP LINK
   const getWhatsAppLink = (message) => {
-    if (!store?.phone) return null;
+    const number = normalizeNigerianWhatsAppNumber(store?.phone);
 
-    let number = String(store.phone).replace(/\D/g, "");
-
-    if (number.startsWith("2340")) {
-      number = `234${number.slice(4)}`;
-    } else if (number.startsWith("0")) {
-      number = `234${number.slice(1)}`;
-    } else if (number.length === 10) {
-      number = `234${number}`;
-    }
-
-    if (!number.startsWith("234") || number.length !== 13) {
+    if (!number) {
       console.error("Invalid vendor WhatsApp number:", store.phone);
       return null;
     }
@@ -443,7 +448,7 @@ export default function PublicStore() {
         "MY ORDER:",
         ...orderedProducts.map(
           (item) =>
-            `${item.name} x ${item.quantity} = ${formatPrice(item.lineTotal)}`
+            `${item.name} x ${item.quantity} @ ${formatPrice(item.price)} = ${formatPrice(item.lineTotal)}`
         ),
         "",
         `Order total: ${formatPrice(orderTotal)}`,
@@ -482,6 +487,7 @@ export default function PublicStore() {
         reference: orderReference,
         total: orderTotal,
       });
+      setCopiedReference(false);
     } catch (submitError) {
       console.error("Checkout error:", submitError);
 
@@ -554,6 +560,12 @@ export default function PublicStore() {
     .filter(Boolean)
     .join(", ");
 
+  const storeBrandColor =
+    /^#[0-9A-Fa-f]{6}$/.test(store?.store_brand_color || "")
+      ? store.store_brand_color
+      : DEFAULT_STORE_BRAND_COLOR;
+  const storeBrandContrast = getBrandContrastColor(storeBrandColor);
+
   // LOADING STATE
   if (loading) {
     return (
@@ -597,7 +609,8 @@ export default function PublicStore() {
       className="public-store-page public-store-app"
       id="store-top"
       style={{
-        "--store-brand-color": store.store_brand_color || "#B8F500",
+        "--store-brand-color": storeBrandColor,
+        "--store-brand-contrast": storeBrandContrast,
       }}
     >
       {/* HEADER */}
@@ -1240,6 +1253,21 @@ export default function PublicStore() {
               <span>Order reference</span>
               <strong>{orderResult.reference}</strong>
             </div>
+
+            <button
+              type="button"
+              className="public-store-done-button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(orderResult.reference);
+                  setCopiedReference(true);
+                } catch (copyError) {
+                  console.error("Could not copy order reference:", copyError);
+                }
+              }}
+            >
+              {copiedReference ? "Reference copied" : "Copy order reference"}
+            </button>
 
             <div className="public-store-success-total">
               <span>Order total</span>
