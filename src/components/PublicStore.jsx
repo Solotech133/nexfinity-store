@@ -21,7 +21,6 @@ import {
   ArrowLeft,
   Home,
   Grid2X2,
-  MessageCircle,
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
@@ -29,6 +28,23 @@ import SharedLoadingScreen from "./SharedLoadingScreen";
 import "./PublicStore.css";
 
 const DEFAULT_STORE_BRAND_COLOR = "#B8F500";
+
+function WhatsAppIcon({ size = 20 }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M20.52 3.48A11.82 11.82 0 0 0 12.05 0C5.49 0 .16 5.33.16 11.89c0 2.1.55 4.15 1.59 5.96L.05 24l6.29-1.65a11.86 11.86 0 0 0 5.7 1.45h.01c6.56 0 11.89-5.33 11.89-11.89a11.81 11.81 0 0 0-3.42-8.43Zm-8.47 18.28h-.01a9.86 9.86 0 0 1-5.03-1.38l-.36-.21-3.73.98 1-3.64-.24-.38a9.84 9.84 0 0 1-1.51-5.24c0-5.42 4.41-9.83 9.84-9.83 2.63 0 5.1 1.02 6.96 2.88a9.78 9.78 0 0 1 2.88 6.96c0 5.43-4.42 9.86-9.85 9.86Zm5.39-7.38c-.29-.15-1.75-.86-2.02-.96-.27-.1-.47-.15-.67.15-.2.29-.77.96-.94 1.16-.17.2-.35.22-.64.07-.29-.15-1.23-.45-2.35-1.45-.87-.78-1.46-1.74-1.63-2.03-.17-.29-.02-.45.13-.6.13-.13.29-.35.44-.52.15-.17.2-.29.29-.49.1-.19.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.79.37-.27.29-1.04 1.02-1.04 2.48s1.06 2.88 1.21 3.08c.15.2 2.09 3.19 5.06 4.47.71.31 1.26.49 1.69.63.71.23 1.36.19 1.87.12.57-.09 1.75-.72 2-1.41.24-.69.24-1.28.17-1.41-.07-.12-.27-.19-.56-.34Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
 
 const normalizeNigerianWhatsAppNumber = (phone) => {
   if (!phone) return null;
@@ -1089,7 +1105,7 @@ export default function PublicStore() {
                     className="public-store-whatsapp-order-button"
                     onClick={orderCartViaWhatsApp}
                   >
-                    <MessageCircle size={17} />
+                    <WhatsAppIcon size={18} />
                     Order on WhatsApp
                   </button>
                   <button
@@ -1372,7 +1388,7 @@ export default function PublicStore() {
           onClick={contactVendor}
           aria-label="Contact vendor on WhatsApp"
         >
-          <MessageCircle size={21} />
+          <WhatsAppIcon size={21} />
           <span>Contact</span>
         </button>
       </nav>
