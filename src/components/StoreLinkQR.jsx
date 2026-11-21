@@ -16,7 +16,6 @@ import "./StoreLinkQR.css";
 export default function StoreLinkQR({
   storeName,
   storeUrl,
-  isStoreReady = false,
 }) {
   const qrRef = useRef(null);
   const [copied, setCopied] = useState(false);
@@ -26,7 +25,7 @@ export default function StoreLinkQR({
     typeof storeUrl === "string" &&
     /^https?:\/\//i.test(storeUrl);
 
-  const canShare = hasStoreUrl && isStoreReady;
+  const canShare = hasStoreUrl;
 
   const copyStoreLink = async () => {
     if (!canShare) return;
@@ -119,12 +118,11 @@ export default function StoreLinkQR({
           <AlertCircle size={23} />
 
           <div>
-            <strong>Your public store isn't ready yet.</strong>
+            <strong>Your store link is still being set up.</strong>
 
             <p>
-              Your store link and QR code will become available
-              after your business is approved and your storefront
-              has been published.
+              Please refresh your dashboard. If the link is still
+              unavailable, contact support for help.
             </p>
           </div>
         </div>

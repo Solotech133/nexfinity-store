@@ -91,7 +91,6 @@ export default function PublicStore() {
           `)
           .eq("store_slug", slug)
           .eq("is_store_published", true)
-          .eq("approval_status", "approved")
           .maybeSingle();
 
         if (!isMounted) return;

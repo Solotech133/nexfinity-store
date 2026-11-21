@@ -224,6 +224,36 @@ async function fetchVendorProfile(userId) {
     );
   }
 
+  const storeSlug =
+    data.store_slug?.trim() ||
+    createStoreSlug(data.business_name, data.id);
+
+  if (
+    data.store_slug?.trim() !== storeSlug ||
+    data.is_store_published !== true
+  ) {
+    const { data: updatedVendor, error: updateError } = await supabase
+      .from("vendors")
+      .update({
+        store_slug: storeSlug,
+        is_store_published: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Store link setup error:", updateError);
+
+      throw new Error(
+        "Your account was created, but we couldn't set up your public store link. Please try again or contact support."
+      );
+    }
+
+    return updatedVendor;
+  }
+
   return data;
 }
 
@@ -278,6 +308,20 @@ function ComponentLoader() {
   return (
     <SharedLoadingScreen label="Loading your dashboard section" />
   );
+}
+
+function createStoreSlug(businessName, vendorId) {
+  const name = String(businessName || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  const uniqueId = String(vendorId)
+    .replace(/[^a-z0-9]/gi, "")
+    .toLowerCase();
+
+  return `${name || "store"}-${uniqueId}`;
 }
 
 // MAIN DASHBOARD
@@ -634,11 +678,6 @@ export default function Dashboard() {
   const storeUrl = storeSlug
     ? `${window.location.origin}/store/${encodeURIComponent(storeSlug)}`
     : "";
-
-  const isStoreReady =
-    vendor?.approval_status === "approved" &&
-    vendor?.is_store_published === true &&
-    Boolean(storeSlug);
 
   // LOADING SCREEN
   if (loading) {
@@ -1452,7 +1491,6 @@ export default function Dashboard() {
                   vendor.store_name || vendor.business_name
                 }
                 storeUrl={storeUrl}
-                isStoreReady={isStoreReady}
               />
             )}
 
