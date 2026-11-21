@@ -27,8 +27,6 @@ import { supabase } from "../lib/supabase";
 import SharedLoadingScreen from "./SharedLoadingScreen";
 import "./PublicStore.css";
 
-const DEFAULT_STORE_BRAND_COLOR = "#B8F500";
-
 function WhatsAppIcon({ size = 20 }) {
   return (
     <svg
@@ -60,20 +58,6 @@ const normalizeNigerianWhatsAppNumber = (phone) => {
   return /^234[789]\d{9}$/.test(number) ? number : null;
 };
 
-const getBrandContrastColor = (hexColor) => {
-  if (!/^#[0-9A-Fa-f]{6}$/.test(hexColor || "")) {
-    return "#20251A";
-  }
-
-  const red = parseInt(hexColor.slice(1, 3), 16);
-  const green = parseInt(hexColor.slice(3, 5), 16);
-  const blue = parseInt(hexColor.slice(5, 7), 16);
-  const luminance =
-    (0.299 * red + 0.587 * green + 0.114 * blue) / 255;
-
-  return luminance > 0.62 ? "#20251A" : "#FFFFFF";
-};
-
 export default function PublicStore() {
   const { slug } = useParams();
 
@@ -85,6 +69,7 @@ export default function PublicStore() {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [activeSubcategory, setActiveSubcategory] = useState("All");
   const [sortBy, setSortBy] = useState("latest");
 
   // CART AND CHECKOUT
@@ -115,6 +100,10 @@ export default function PublicStore() {
       setStore(null);
       setProducts([]);
       setCart({});
+      setSearchTerm("");
+      setActiveCategory("All");
+      setActiveSubcategory("All");
+      setSortBy("latest");
 
       try {
         const { data, error: fetchError } = await supabase.rpc(
@@ -153,6 +142,7 @@ export default function PublicStore() {
             price,
             compare_at_price,
             category,
+            subcategory,
             image_url,
             is_featured,
             is_available,
@@ -250,12 +240,13 @@ export default function PublicStore() {
 
   const openCategories = () => {
     setActiveCategory("All");
+    setActiveSubcategory("All");
     scrollToSection("store-category-list");
   };
 
   const contactVendor = () => {
     const link = getWhatsAppLink(
-      `Hello ${storeName}, I found your store on Nexfinity Store. I would like to make an enquiry.`
+      `Hello ${storeName}, I found your online store and would like to make an enquiry.`
     );
 
     if (link) {
@@ -344,11 +335,6 @@ export default function PublicStore() {
       })
       .filter(Boolean);
   }, [cart, products]);
-
-  const cartCount = cartItems.reduce(
-    (total, item) => total + item.quantity,
-    0
-  );
 
   const cartTotal = cartItems.reduce(
     (total, item) => total + item.lineTotal,
@@ -487,7 +473,7 @@ export default function PublicStore() {
       const orderTotal = Number(result.total_amount);
 
       const messageLines = [
-        `Hello ${storeName}, I have placed an order on your Nexfinity Store.`,
+        `Hello ${storeName}, I would like to place an order.`,
         "",
         `Order reference: ${orderReference}`,
         "",
@@ -565,6 +551,24 @@ export default function PublicStore() {
     return ["All", ...unique];
   }, [products]);
 
+  const subcategories = useMemo(() => {
+    const categoryProducts =
+      activeCategory === "All"
+        ? products
+        : products.filter(
+            (product) => (product.category || "").trim() === activeCategory
+          );
+    const unique = [
+      ...new Set(
+        categoryProducts
+          .map((product) => product.subcategory?.trim())
+          .filter(Boolean)
+      ),
+    ];
+
+    return ["All", ...unique];
+  }, [products, activeCategory]);
+
   // SEARCH, CATEGORY FILTER AND SORT APPLY TO ALL PRODUCTS
   const filteredProducts = useMemo(() => {
     let result = [...products];
@@ -575,11 +579,23 @@ export default function PublicStore() {
       );
     }
 
+    if (activeSubcategory !== "All") {
+      result = result.filter(
+        (product) =>
+          (product.subcategory || "").trim() === activeSubcategory
+      );
+    }
+
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
 
       result = result.filter((product) =>
-        [product.name, product.description, product.category]
+        [
+          product.name,
+          product.description,
+          product.category,
+          product.subcategory,
+        ]
           .filter(Boolean)
           .some((value) => String(value).toLowerCase().includes(term))
       );
@@ -596,7 +612,7 @@ export default function PublicStore() {
     }
 
     return result;
-  }, [products, activeCategory, searchTerm, sortBy]);
+  }, [products, activeCategory, activeSubcategory, searchTerm, sortBy]);
 
   const location = [
     store?.business_address,
@@ -605,12 +621,6 @@ export default function PublicStore() {
   ]
     .filter(Boolean)
     .join(", ");
-
-  const storeBrandColor =
-    /^#[0-9A-Fa-f]{6}$/.test(store?.store_brand_color || "")
-      ? store.store_brand_color
-      : DEFAULT_STORE_BRAND_COLOR;
-  const storeBrandContrast = getBrandContrastColor(storeBrandColor);
 
   // LOADING STATE
   if (loading) {
@@ -631,7 +641,7 @@ export default function PublicStore() {
         <p>{error || "We couldn't find this store."}</p>
 
         <a href="/" className="public-store-home-link">
-          Visit Nexfinity Store
+          Return to marketplace
         </a>
       </main>
     );
@@ -654,34 +664,23 @@ export default function PublicStore() {
     <main
       className="public-store-page public-store-app"
       id="store-top"
-      style={{
-        "--store-brand-color": storeBrandColor,
-        "--store-brand-contrast": storeBrandContrast,
-      }}
     >
       {/* HEADER */}
       <header className="public-store-header">
-        <a href="/" className="public-store-brand">
-          <span className="public-store-brand-icon">
-            <Store size={19} />
-          </span>
-          <span>
-            Nexfinity <strong>Store</strong>
-          </span>
+        <a href="#store-top" className="public-store-header-store">
+          <strong>{storeName}</strong>
+          <span className="public-store-header-label">Official store</span>
         </a>
 
         <div className="public-store-header-right">
-          <span className="public-store-header-label">Independent Store</span>
-
           <button
             type="button"
             className="public-store-cart-trigger"
             onClick={() => setCartOpen(true)}
-            aria-label={`Open shopping cart, ${cartCount} items`}
+            aria-label="Open shopping cart"
           >
             <ShoppingBag size={18} />
             <span>Cart</span>
-            <strong>{cartCount}</strong>
           </button>
         </div>
       </header>
@@ -870,7 +869,10 @@ export default function PublicStore() {
                       type="button"
                       key={category}
                       className={activeCategory === category ? "active" : ""}
-                      onClick={() => setActiveCategory(category)}
+                      onClick={() => {
+                        setActiveCategory(category);
+                        setActiveSubcategory("All");
+                      }}
                     >
                       {category}
                     </button>
@@ -899,6 +901,28 @@ export default function PublicStore() {
                 </div>
               </div>
 
+              {subcategories.length > 1 && (
+                <div
+                  className="public-store-subcategory-list"
+                  role="group"
+                  aria-label="Filter by subcategory"
+                >
+                  <span>Refine:</span>
+                  {subcategories.map((subcategory) => (
+                    <button
+                      type="button"
+                      key={subcategory}
+                      className={
+                        activeSubcategory === subcategory ? "active" : ""
+                      }
+                      onClick={() => setActiveSubcategory(subcategory)}
+                    >
+                      {subcategory}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {filteredProducts.length === 0 ? (
                 <div className="public-store-no-results">
                   <Search size={27} />
@@ -909,6 +933,7 @@ export default function PublicStore() {
                     onClick={() => {
                       setSearchTerm("");
                       setActiveCategory("All");
+                      setActiveSubcategory("All");
                     }}
                   >
                     Clear filters
@@ -958,7 +983,15 @@ export default function PublicStore() {
                         <div className="public-store-product-details">
                           {product.category && (
                             <span className="public-store-product-category">
-                              {product.category}
+                              {product.subcategory
+                                ? `${product.category} / ${product.subcategory}`
+                                : product.category}
+                            </span>
+                          )}
+
+                          {!product.category && product.subcategory && (
+                            <span className="public-store-product-category">
+                              {product.subcategory}
                             </span>
                           )}
 
@@ -1163,7 +1196,7 @@ export default function PublicStore() {
             </div>
 
             <div className="public-store-checkout-summary">
-              <span>{cartCount} item(s) in your order</span>
+              <span>Your order total</span>
               <strong>{formatPrice(cartTotal)}</strong>
             </div>
 
@@ -1373,12 +1406,9 @@ export default function PublicStore() {
           type="button"
           className="public-store-nav-item public-store-nav-cart"
           onClick={() => setCartOpen(true)}
-          aria-label={`Open cart, ${cartCount} items`}
+          aria-label="Open cart"
         >
           <ShoppingCart size={21} />
-          {cartCount > 0 && (
-            <span className="public-store-nav-badge">{cartCount}</span>
-          )}
           <span>Cart</span>
         </button>
 

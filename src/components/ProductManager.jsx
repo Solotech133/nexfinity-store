@@ -34,6 +34,7 @@ const emptyForm = {
   price: "",
   compare_at_price: "",
   category: "",
+  subcategory: "",
   image_url: "",
   is_featured: false,
   is_available: true,
@@ -75,6 +76,7 @@ async function fetchVendorProducts(vendorId) {
       price,
       compare_at_price,
       category,
+      subcategory,
       image_url,
       is_featured,
       is_available,
@@ -252,6 +254,7 @@ function ProductManagerContent({ vendor }) {
         product.name,
         product.description,
         product.category,
+        product.subcategory,
       ]
         .filter(Boolean)
         .some((value) =>
@@ -307,6 +310,7 @@ function ProductManagerContent({ vendor }) {
           ? ""
           : String(product.compare_at_price),
       category: product.category || "",
+      subcategory: product.subcategory || "",
       image_url: product.image_url || "",
       is_featured: Boolean(product.is_featured),
       is_available: Boolean(product.is_available),
@@ -503,6 +507,7 @@ function ProductManagerContent({ vendor }) {
             ? null
             : Number(form.compare_at_price),
         category: form.category.trim() || null,
+        subcategory: form.subcategory.trim() || null,
         image_url: imageUrl,
         is_featured: form.is_featured,
         is_available: form.is_available,
@@ -863,7 +868,9 @@ function ProductManagerContent({ vendor }) {
 
               <div className="product-card-body">
                 <span className="product-card-category">
-                  {product.category || "Uncategorised"}
+                  {[product.category, product.subcategory]
+                    .filter(Boolean)
+                    .join(" / ") || "Uncategorised"}
                 </span>
 
                 <h3>{product.name}</h3>
@@ -1009,19 +1016,35 @@ function ProductManagerContent({ vendor }) {
                 </label>
               </div>
 
-              <label>
-                Category
+              <div className="product-form-row">
+                <label>
+                  Category
 
-                <input
-                  type="text"
-                  value={form.category}
-                  onChange={(event) =>
-                    updateField("category", event.target.value)
-                  }
-                  placeholder="e.g. Accessories"
-                  maxLength={80}
-                />
-              </label>
+                  <input
+                    type="text"
+                    value={form.category}
+                    onChange={(event) =>
+                      updateField("category", event.target.value)
+                    }
+                    placeholder="e.g. Fashion"
+                    maxLength={80}
+                  />
+                </label>
+
+                <label>
+                  Subcategory
+
+                  <input
+                    type="text"
+                    value={form.subcategory}
+                    onChange={(event) =>
+                      updateField("subcategory", event.target.value)
+                    }
+                    placeholder="e.g. Crossbody bags"
+                    maxLength={80}
+                  />
+                </label>
+              </div>
 
               <label>
                 Product description
