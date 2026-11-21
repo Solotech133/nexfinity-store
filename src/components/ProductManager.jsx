@@ -88,7 +88,43 @@ async function fetchVendorProducts(vendorId) {
 
   if (error) throw error;
 
-  return data || [];
+  const products = data || [];
+  if (products.length === 0) return products;
+
+  const { data: variants, error: variantsError } = await supabase
+    .from("product_variants")
+    .select(`
+      id,
+      product_id,
+      variant_name,
+      color,
+      size,
+      stock_quantity,
+      is_active
+    `)
+    .in(
+      "product_id",
+      products.map((product) => product.id)
+    )
+    .order("sort_order", { ascending: true });
+
+  if (variantsError) throw variantsError;
+
+  const variantsByProduct = (variants || []).reduce(
+    (result, variant) => {
+      if (!result[variant.product_id]) {
+        result[variant.product_id] = [];
+      }
+      result[variant.product_id].push(variant);
+      return result;
+    },
+    {}
+  );
+
+  return products.map((product) => ({
+    ...product,
+    variants: variantsByProduct[product.id] || [],
+  }));
 }
 
 function getStoragePath(imageUrl, vendorId) {
@@ -143,6 +179,8 @@ function ProductManagerContent({ vendor }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [variantsEnabled, setVariantsEnabled] = useState(false);
+  const [variants, setVariants] = useState([]);
 
   const [selectedImage, setSelectedImage] = useState(null);
   const [imagePreview, setImagePreview] = useState("");
@@ -263,6 +301,18 @@ function ProductManagerContent({ vendor }) {
     );
   }, [products, search]);
 
+  const existingSubcategories = useMemo(
+    () =>
+      [
+        ...new Set(
+          products
+            .map((product) => product.subcategory?.trim())
+            .filter(Boolean)
+        ),
+      ].sort((a, b) => a.localeCompare(b)),
+    [products]
+  );
+
   // Reset image selection.
   const resetImageSelection = () => {
     if (imagePreview.startsWith("blob:")) {
@@ -290,13 +340,16 @@ function ProductManagerContent({ vendor }) {
     resetImageSelection();
     setEditingId(null);
     setForm(emptyForm);
+    setVariantsEnabled(false);
+    setVariants([]);
+    setVariantImageFiles({});
     setError("");
     setSuccess("");
     setShowForm(true);
   };
 
   // Open edit form.
-  const openEditForm = (product) => {
+  const openEditForm = async (product) => {
     resetImageSelection();
 
     setEditingId(product.id);
@@ -315,6 +368,56 @@ function ProductManagerContent({ vendor }) {
       is_featured: Boolean(product.is_featured),
       is_available: Boolean(product.is_available),
     });
+    setVariantImageFiles({});
+    setVariants([]);
+    setVariantsEnabled(false);
+
+    try {
+      const { data, error: variantError } = await supabase
+        .from("product_variants")
+        .select(`
+          id,
+          product_id,
+          variant_name,
+          color,
+          size,
+          sku,
+          attributes,
+          price,
+          stock_quantity,
+          image_url,
+          is_active,
+          sort_order
+        `)
+        .eq("product_id", product.id)
+        .order("sort_order", { ascending: true });
+
+      if (variantError) throw variantError;
+
+      const loadedVariants = (data || []).map((variant) => ({
+        ...variant,
+        material: variant.attributes?.material || "",
+        style: variant.attributes?.style || "",
+        customAttributes: (() => {
+          if (!variant.attributes) return "";
+          const custom = { ...variant.attributes };
+          delete custom.material;
+          delete custom.style;
+          delete custom.customAttributes;
+          return Object.keys(custom).length > 0
+            ? JSON.stringify(custom)
+            : "";
+        })(),
+        selectedImage: null,
+        imagePreview: "",
+        removeExistingImage: false,
+      }));
+      setVariants(loadedVariants);
+      setVariantsEnabled(loadedVariants.length > 0);
+    } catch (variantLoadError) {
+      console.error("Variant loading error:", variantLoadError);
+      setError("The product loaded, but variants could not be loaded.");
+    }
 
     setError("");
     setSuccess("");
@@ -328,6 +431,9 @@ function ProductManagerContent({ vendor }) {
     setShowForm(false);
     setEditingId(null);
     setForm(emptyForm);
+    setVariantsEnabled(false);
+    setVariants([]);
+    setVariantImageFiles({});
     resetImageSelection();
     setError("");
   };
@@ -375,6 +481,127 @@ function ProductManagerContent({ vendor }) {
     setRemoveExistingImage(false);
   };
 
+  const addVariant = () => {
+    setVariants((current) => [
+      ...current,
+      {
+        id: null,
+        _key: crypto.randomUUID(),
+        variant_name: "",
+        color: "",
+        size: "",
+        sku: "",
+        price: "",
+        stock_quantity: 0,
+        image_url: "",
+        is_active: true,
+        material: "",
+        style: "",
+        customAttributes: "",
+        selectedImage: null,
+        imagePreview: "",
+        removeExistingImage: false,
+      },
+    ]);
+  };
+
+  const updateVariant = (key, field, value) => {
+    setVariants((current) =>
+      current.map((variant) =>
+        (variant.id || variant._key) === key
+          ? { ...variant, [field]: value }
+          : variant
+      )
+    );
+  };
+
+  const removeVariant = async (variant) => {
+    const key = variant.id || variant._key;
+
+    if (variant.id) {
+      const confirmed = window.confirm(
+        `Delete variant "${variant.variant_name || [variant.color, variant.size].filter(Boolean).join(" / ") || "this variant"}"?`
+      );
+      if (!confirmed) return;
+
+      const { error: deleteError } = await supabase
+        .from("product_variants")
+        .delete()
+        .eq("id", variant.id)
+        .eq("product_id", editingId);
+
+      if (deleteError) {
+        setError(deleteError.message || "Unable to delete this variant.");
+        return;
+      }
+
+      if (variant.image_url) {
+        const imagePath = getStoragePath(variant.image_url, vendorId);
+        if (imagePath) {
+          await supabase.storage
+            .from("product-images")
+            .remove([imagePath]);
+        }
+      }
+    } else if (editingId) {
+      const { error: deactivateError } = await supabase
+        .from("product_variants")
+        .update({ is_active: false, updated_at: new Date().toISOString() })
+        .eq("product_id", savedProductId);
+
+      if (deactivateError) {
+        throw deactivateError;
+      }
+    }
+
+    setVariants((current) =>
+      current.filter(
+        (item) => (item.id || item._key) !== key
+      )
+    );
+  };
+
+  const handleVariantImageSelection = (key, event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError("");
+
+    if (!allowedImageTypes.includes(file.type)) {
+      setError("Please select a JPG, PNG, WEBP or GIF variant image.");
+      event.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_IMAGE_SIZE) {
+      setError("Each variant image must not be larger than 5MB.");
+      event.target.value = "";
+      return;
+    }
+
+    setVariantImageFiles((current) => ({
+      ...current,
+      [key]: file,
+    }));
+
+    setVariants((current) =>
+      current.map((variant) => {
+        if ((variant.id || variant._key) !== key) return variant;
+
+        if (variant.imagePreview?.startsWith("blob:")) {
+          URL.revokeObjectURL(variant.imagePreview);
+        }
+
+        return {
+          ...variant,
+          selectedImage: file,
+          imagePreview: URL.createObjectURL(file),
+          removeExistingImage: false,
+        };
+      })
+    );
+  };
+
   // Upload image to Supabase Storage.
   const uploadProductImage = async () => {
     if (!selectedImage) {
@@ -415,6 +642,44 @@ function ProductManagerContent({ vendor }) {
     }
   };
 
+  const uploadVariantImage = async (variant) => {
+    if (!variant.selectedImage) {
+      return variant.removeExistingImage ? null : variant.image_url || null;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExtension =
+        variant.selectedImage.name.split(".").pop()?.toLowerCase() ||
+        "jpg";
+      const fileName = `${crypto.randomUUID()}.${fileExtension}`;
+      const filePath = `${vendorId}/variants/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, variant.selectedImage, {
+          cacheControl: "3600",
+          upsert: false,
+          contentType: variant.selectedImage.type,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("product-images")
+        .getPublicUrl(filePath);
+
+      if (!data?.publicUrl) {
+        throw new Error("Unable to generate the variant image URL.");
+      }
+
+      return data.publicUrl;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   // Save product.
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -433,6 +698,11 @@ function ProductManagerContent({ vendor }) {
 
     if (!form.name.trim()) {
       setError("Enter a product name.");
+      return;
+    }
+
+    if (!form.category.trim()) {
+      setError("Enter a product category.");
       return;
     }
 
@@ -462,6 +732,49 @@ function ProductManagerContent({ vendor }) {
         "The previous price must be higher than the selling price."
       );
       return;
+    }
+
+    if (variantsEnabled) {
+      const combinationKeys = new Set();
+
+      for (const variant of variants) {
+        const color = variant.color.trim();
+        const size = variant.size.trim();
+        const name = variant.variant_name.trim();
+        const combination = [color, size, name].join("|").toLowerCase();
+
+        if (!color && !size && !name) {
+          setError(
+            "Give each variant a name, colour or size."
+          );
+          return;
+        }
+
+        if (combinationKeys.has(combination)) {
+          setError(
+            "Duplicate variants are not allowed. Use a different name, colour or size."
+          );
+          return;
+        }
+        combinationKeys.add(combination);
+
+        if (
+          variant.price !== "" &&
+          (!Number.isFinite(Number(variant.price)) ||
+            Number(variant.price) < 0)
+        ) {
+          setError("Enter a valid individual variant price.");
+          return;
+        }
+
+        if (
+          !Number.isInteger(Number(variant.stock_quantity)) ||
+          Number(variant.stock_quantity) < 0
+        ) {
+          setError("Variant stock quantity must be a whole number of zero or more.");
+          return;
+        }
+      }
     }
 
     if (
@@ -506,7 +819,7 @@ function ProductManagerContent({ vendor }) {
           form.compare_at_price === ""
             ? null
             : Number(form.compare_at_price),
-        category: form.category.trim() || null,
+        category: form.category.trim(),
         subcategory: form.subcategory.trim() || null,
         image_url: imageUrl,
         is_featured: form.is_featured,
@@ -550,6 +863,87 @@ function ProductManagerContent({ vendor }) {
         }
 
         throw result.error;
+      }
+
+      const savedProductId = result.data.id;
+
+      if (variantsEnabled) {
+        for (let index = 0; index < variants.length; index += 1) {
+          const variant = variants[index];
+          let customAttributes = {};
+
+          if (variant.customAttributes?.trim()) {
+            try {
+              customAttributes = JSON.parse(variant.customAttributes);
+            } catch {
+              throw new Error(
+                "Custom variant attributes must be valid JSON."
+              );
+            }
+          }
+
+          const attributes = {
+            ...customAttributes,
+            ...(variant.material?.trim()
+              ? { material: variant.material.trim() }
+              : {}),
+            ...(variant.style?.trim()
+              ? { style: variant.style.trim() }
+              : {}),
+          };
+          const variantImageUrl = await uploadVariantImage(variant);
+          const variantPayload = {
+            product_id: savedProductId,
+            variant_name: variant.variant_name.trim() || null,
+            color: variant.color.trim() || null,
+            size: variant.size.trim() || null,
+            sku: variant.sku.trim() || null,
+            attributes,
+            price:
+              variant.price === ""
+                ? null
+                : Number(variant.price),
+            stock_quantity: Number(variant.stock_quantity),
+            image_url: variantImageUrl,
+            is_active: Boolean(variant.is_active),
+            sort_order: index,
+            updated_at: new Date().toISOString(),
+          };
+
+          const variantResult = variant.id
+            ? await supabase
+                .from("product_variants")
+                .update(variantPayload)
+                .eq("id", variant.id)
+                .eq("product_id", savedProductId)
+                .select()
+                .single()
+            : await supabase
+                .from("product_variants")
+                .insert(variantPayload)
+                .select()
+                .single();
+
+          if (variantResult.error) {
+            throw variantResult.error;
+          }
+
+          if (
+            variant.id &&
+            variant.image_url &&
+            (variant.selectedImage || variant.removeExistingImage)
+          ) {
+            const oldVariantPath = getStoragePath(
+              variant.image_url,
+              vendorId
+            );
+            if (oldVariantPath) {
+              await supabase.storage
+                .from("product-images")
+                .remove([oldVariantPath]);
+            }
+          }
+        }
       }
 
       // Remove old image after successful update.
@@ -889,6 +1283,16 @@ function ProductManagerContent({ vendor }) {
                   )}
                 </div>
 
+                {product.variants?.some(
+                  (variant) =>
+                    variant.is_active &&
+                    Number(variant.stock_quantity) <= 5
+                ) && (
+                  <p className="product-card-low-stock">
+                    Low-stock variant
+                  </p>
+                )}
+
                 <div className="product-card-actions">
                   <button
                     type="button"
@@ -1036,6 +1440,7 @@ function ProductManagerContent({ vendor }) {
 
                   <input
                     type="text"
+                    list="existing-product-subcategories"
                     value={form.subcategory}
                     onChange={(event) =>
                       updateField("subcategory", event.target.value)
@@ -1043,6 +1448,11 @@ function ProductManagerContent({ vendor }) {
                     placeholder="e.g. Crossbody bags"
                     maxLength={80}
                   />
+                  <datalist id="existing-product-subcategories">
+                    {existingSubcategories.map((subcategory) => (
+                      <option value={subcategory} key={subcategory} />
+                    ))}
+                  </datalist>
                 </label>
               </div>
 
@@ -1059,6 +1469,276 @@ function ProductManagerContent({ vendor }) {
                   maxLength={1500}
                 />
               </label>
+
+              <div className="product-variants-section">
+                <div className="product-variants-heading">
+                  <div>
+                    <strong>Product variants</strong>
+                    <span>Optional · Colours, sizes, materials or styles</span>
+                  </div>
+                  <label className="product-checkbox-label">
+                    <input
+                      type="checkbox"
+                      checked={variantsEnabled}
+                      onChange={(event) => {
+                        const enabled = event.target.checked;
+                        setVariantsEnabled(enabled);
+                        if (enabled && variants.length === 0) {
+                          addVariant();
+                        }
+                      }}
+                    />
+                    Enable variants
+                  </label>
+                </div>
+
+                {variantsEnabled && (
+                  <>
+                    {variants.map((variant, index) => {
+                      const key = variant.id || variant._key;
+                      const preview =
+                        variant.imagePreview ||
+                        (!variant.removeExistingImage
+                          ? variant.image_url
+                          : "");
+
+                      return (
+                        <div className="product-variant-editor" key={key}>
+                          <div className="product-variant-editor-heading">
+                            <strong>Variant {index + 1}</strong>
+                            <button
+                              type="button"
+                              className="product-delete-button"
+                              onClick={() => removeVariant(variant)}
+                              disabled={saving}
+                            >
+                              <Trash2 size={15} />
+                              Remove
+                            </button>
+                          </div>
+
+                          <div className="product-form-row">
+                            <label>
+                              Variant name
+                              <input
+                                type="text"
+                                value={variant.variant_name || ""}
+                                onChange={(event) =>
+                                  updateVariant(
+                                    key,
+                                    "variant_name",
+                                    event.target.value
+                                  )
+                                }
+                                placeholder="e.g. Premium oversized"
+                                maxLength={150}
+                              />
+                            </label>
+                            <label>
+                              SKU (optional)
+                              <input
+                                type="text"
+                                value={variant.sku || ""}
+                                onChange={(event) =>
+                                  updateVariant(key, "sku", event.target.value)
+                                }
+                                placeholder="e.g. TSHIRT-BLK-M"
+                                maxLength={100}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="product-form-row">
+                            <label>
+                              Colour
+                              <input
+                                type="text"
+                                value={variant.color || ""}
+                                onChange={(event) =>
+                                  updateVariant(key, "color", event.target.value)
+                                }
+                                placeholder="e.g. Black"
+                                maxLength={80}
+                              />
+                            </label>
+                            <label>
+                              Size
+                              <input
+                                type="text"
+                                value={variant.size || ""}
+                                onChange={(event) =>
+                                  updateVariant(key, "size", event.target.value)
+                                }
+                                placeholder="e.g. Medium"
+                                maxLength={80}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="product-form-row">
+                            <label>
+                              Material
+                              <input
+                                type="text"
+                                value={variant.material || ""}
+                                onChange={(event) =>
+                                  updateVariant(
+                                    key,
+                                    "material",
+                                    event.target.value
+                                  )
+                                }
+                                placeholder="e.g. Cotton"
+                                maxLength={80}
+                              />
+                            </label>
+                            <label>
+                              Style
+                              <input
+                                type="text"
+                                value={variant.style || ""}
+                                onChange={(event) =>
+                                  updateVariant(key, "style", event.target.value)
+                                }
+                                placeholder="e.g. Oversized"
+                                maxLength={80}
+                              />
+                            </label>
+                          </div>
+
+                          <div className="product-form-row">
+                            <label>
+                              Individual price (optional)
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={variant.price ?? ""}
+                                onChange={(event) =>
+                                  updateVariant(key, "price", event.target.value)
+                                }
+                                placeholder="Uses product price when blank"
+                              />
+                            </label>
+                            <label>
+                              Stock quantity
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={variant.stock_quantity ?? 0}
+                                onChange={(event) =>
+                                  updateVariant(
+                                    key,
+                                    "stock_quantity",
+                                    event.target.value
+                                  )
+                                }
+                              />
+                            </label>
+                          </div>
+
+                          <label>
+                            Other attributes (optional JSON)
+                            <textarea
+                              rows={2}
+                              value={variant.customAttributes || ""}
+                              onChange={(event) =>
+                                updateVariant(
+                                  key,
+                                  "customAttributes",
+                                  event.target.value
+                                )
+                              }
+                              placeholder={'{"fit":"regular","length":"long"}'}
+                              maxLength={2000}
+                            />
+                          </label>
+
+                          <div className="product-variant-image">
+                            {preview ? (
+                              <img src={preview} alt={`${variant.variant_name || "Variant"} preview`} />
+                            ) : (
+                              <ImagePlus size={24} />
+                            )}
+                            <div>
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp,image/gif"
+                                hidden
+                                id={`variant-image-${key}`}
+                                onChange={(event) =>
+                                  handleVariantImageSelection(key, event)
+                                }
+                              />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  document
+                                    .getElementById(`variant-image-${key}`)
+                                    ?.click()
+                                }
+                                disabled={saving}
+                              >
+                                <Upload size={14} />
+                                {preview ? "Replace image" : "Add image"}
+                              </button>
+                              {preview && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setVariants((current) =>
+                                      current.map((item) =>
+                                        (item.id || item._key) === key
+                                          ? {
+                                              ...item,
+                                              selectedImage: null,
+                                              imagePreview: "",
+                                              removeExistingImage: true,
+                                            }
+                                          : item
+                                      )
+                                    );
+                                  }}
+                                  disabled={saving}
+                                >
+                                  <Trash size={14} />
+                                  Remove image
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          <label className="product-checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(variant.is_active)}
+                              onChange={(event) =>
+                                updateVariant(
+                                  key,
+                                  "is_active",
+                                  event.target.checked
+                                )
+                              }
+                            />
+                            Variant active and available
+                          </label>
+                        </div>
+                      );
+                    })}
+
+                    <button
+                      type="button"
+                      className="product-add-button"
+                      onClick={addVariant}
+                      disabled={saving}
+                    >
+                      <Plus size={16} />
+                      Add another variant
+                    </button>
+                  </>
+                )}
+              </div>
 
               <div className="product-image-upload-section">
                 <div className="product-image-upload-heading">

@@ -630,6 +630,135 @@
 }
 
 
+.product-variants-section {
+  border: 1px solid #e1e5d8;
+  border-radius: 12px;
+  background: #fafbf7;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-variants-heading,
+.product-variant-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.product-variants-heading > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.product-variants-heading strong,
+.product-variant-editor-heading strong {
+  color: #394128;
+  font-size: 12px;
+}
+
+.product-variants-heading span {
+  color: #7c846f;
+  font-size: 10px;
+}
+
+.product-variant-editor {
+  border: 1px solid #e1e5d8;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.product-variant-editor > label,
+.product-variant-editor .product-checkbox-label {
+  color: #394128;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.product-variant-editor textarea,
+.product-variant-editor input {
+  width: 100%;
+}
+
+.product-variant-editor textarea {
+  border: 1px solid #dde2d2;
+  border-radius: 8px;
+  padding: 9px 10px;
+  outline: none;
+  resize: vertical;
+  color: #1f2517;
+  font: inherit;
+}
+
+.product-variant-image {
+  min-height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px dashed #ccd3bf;
+  border-radius: 9px;
+  padding: 8px;
+  color: #7c846f;
+}
+
+.product-variant-image > img {
+  width: 72px;
+  height: 72px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+
+.product-variant-image > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.product-variant-image button {
+  min-height: 34px;
+  border: 1px solid #dde2d2;
+  border-radius: 7px;
+  background: #fff;
+  color: #394128;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 9px;
+  font-size: 10px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.product-variant-editor-heading .product-delete-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.product-card-low-stock {
+  color: #a05b20;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+@media (max-width: 768px) {
+  .product-variants-heading,
+  .product-variant-editor-heading {
+    align-items: flex-start;
+  }
+
+  .product-variant-image {
+    align-items: flex-start;
+  }
+}
+
 /* PRODUCT IMAGE UPLOAD */
 
 .product-image-upload-section {

@@ -76,6 +76,10 @@ export default function PublicStore() {
   const [cart, setCart] = useState({});
   const [cartOpen, setCartOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [productVariants, setProductVariants] = useState({});
+  const [variantProduct, setVariantProduct] = useState(null);
+  const [selectedVariantId, setSelectedVariantId] = useState("");
+  const [variantQuantity, setVariantQuantity] = useState(1);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const submissionInProgress = useRef(false);
   const [checkoutError, setCheckoutError] = useState("");
@@ -100,6 +104,10 @@ export default function PublicStore() {
       setStore(null);
       setProducts([]);
       setCart({});
+      setProductVariants({});
+      setVariantProduct(null);
+      setSelectedVariantId("");
+      setVariantQuantity(1);
       setSearchTerm("");
       setActiveCategory("All");
       setActiveSubcategory("All");
@@ -158,7 +166,52 @@ export default function PublicStore() {
           console.error("Products loading error:", productFetchError);
           setProductsError("Products could not be loaded. Please try again.");
         } else {
-          setProducts(productData || []);
+          const loadedProducts = productData || [];
+          setProducts(loadedProducts);
+
+          if (loadedProducts.length > 0) {
+            const { data: variantData, error: variantFetchError } =
+              await supabase
+                .from("product_variants")
+                .select(`
+                  id,
+                  product_id,
+                  variant_name,
+                  color,
+                  size,
+                  sku,
+                  attributes,
+                  price,
+                  stock_quantity,
+                  image_url,
+                  is_active,
+                  sort_order
+                `)
+                .in(
+                  "product_id",
+                  loadedProducts.map((product) => product.id)
+                )
+                .eq("is_active", true)
+                .order("sort_order", { ascending: true });
+
+            if (!isMounted) return;
+
+            if (variantFetchError) {
+              console.error("Variants loading error:", variantFetchError);
+            } else {
+              const grouped = (variantData || []).reduce(
+                (result, variant) => {
+                  if (!result[variant.product_id]) {
+                    result[variant.product_id] = [];
+                  }
+                  result[variant.product_id].push(variant);
+                  return result;
+                },
+                {}
+              );
+              setProductVariants(grouped);
+            }
+          }
         }
 
         setLoading(false);
@@ -268,7 +321,7 @@ export default function PublicStore() {
       "MY CART:",
       ...cartItems.map(
         (item) =>
-          `${item.name} x ${item.quantity} @ ${formatPrice(item.price)} = ${formatPrice(item.lineTotal)}`
+          `${item.name}${item.variantId ? ` (${[item.color, item.size].filter(Boolean).join(" / ") || item.variantName})` : ""} x ${item.quantity} @ ${formatPrice(item.price)} = ${formatPrice(item.lineTotal)}`
       ),
       "",
       `Subtotal: ${formatPrice(cartTotal)}`,
@@ -287,54 +340,129 @@ export default function PublicStore() {
   };
 
   // CART HELPERS
-  const addToCart = (product) => {
+  const addToCart = (product, variant = null, quantity = 1) => {
     if (!product?.id || !product.is_available) return;
+
+    if (variant && (!variant.is_active || Number(variant.stock_quantity) < 1)) {
+      window.alert("This variant is currently unavailable.");
+      return;
+    }
 
     setOrderResult(null);
 
+    const cartKey = `${product.id}::${variant?.id || "base"}`;
+    const unitPrice =
+      variant?.price == null ? Number(product.price) : Number(variant.price);
+
     setCart((previous) => ({
       ...previous,
-      [product.id]: Math.min((previous[product.id] || 0) + 1, 99),
+      [cartKey]: {
+        quantity: Math.min(
+          (previous[cartKey]?.quantity || 0) + quantity,
+          variant ? Number(variant.stock_quantity) : 99
+        ),
+        variantId: variant?.id || null,
+        unitPrice,
+      },
     }));
   };
 
-  const updateCartQuantity = (productId, quantity) => {
+  const updateCartQuantity = (cartKey, quantity) => {
     setCart((previous) => {
       const updated = { ...previous };
+      const existing = updated[cartKey];
+      if (!existing) return updated;
+
+      let maximum = 99;
+      if (existing.variantId) {
+        const selectedVariant = Object.values(productVariants)
+          .flat()
+          .find((variant) => variant.id === existing.variantId);
+        maximum = selectedVariant?.stock_quantity ?? 0;
+      }
 
       if (quantity <= 0) {
-        delete updated[productId];
+        delete updated[cartKey];
       } else {
-        updated[productId] = Math.min(Math.max(Math.floor(quantity), 1), 99);
+        updated[cartKey] = {
+          ...existing,
+          quantity: Math.min(
+            Math.max(Math.floor(quantity), 1),
+            maximum
+          ),
+        };
       }
 
       return updated;
     });
   };
 
-  const removeFromCart = (productId) => {
+  const removeFromCart = (cartKey) => {
     setCart((previous) => {
       const updated = { ...previous };
-      delete updated[productId];
+      delete updated[cartKey];
       return updated;
     });
   };
 
+  const openVariantSelector = (product) => {
+    const variants = productVariants[product.id] || [];
+    setVariantProduct(product);
+    setSelectedVariantId(variants[0]?.id || "");
+    setVariantQuantity(1);
+  };
+
+  const closeVariantSelector = () => {
+    setVariantProduct(null);
+    setSelectedVariantId("");
+    setVariantQuantity(1);
+  };
+
   const cartItems = useMemo(() => {
     return Object.entries(cart)
-      .map(([productId, quantity]) => {
+      .map(([cartKey, cartEntry]) => {
+        const [productId, variantSuffix] = cartKey.split("::");
         const product = products.find((item) => item.id === productId);
 
         if (!product || !product.is_available) return null;
 
+        const variantId =
+          cartEntry.variantId || (variantSuffix !== "base" ? variantSuffix : null);
+        const variant = variantId
+          ? (productVariants[productId] || []).find(
+              (item) => item.id === variantId
+            )
+          : null;
+
+        if (variant && (!variant.is_active || Number(variant.stock_quantity) < 1)) {
+          return null;
+        }
+
+        const quantity = cartEntry.quantity || 0;
+        const price =
+          variant?.price == null
+            ? cartEntry.unitPrice ?? Number(product.price)
+            : Number(variant.price);
+
         return {
           ...product,
+          cartKey,
+          variantId,
+          variantName: variant?.variant_name || "",
+          color: variant?.color || "",
+          size: variant?.size || "",
+          attributes: variant?.attributes || {},
+          image_url: variant?.image_url || product.image_url,
+          price,
           quantity,
-          lineTotal: Number(product.price) * quantity,
+          stockQuantity: variant
+            ? Number(variant.stock_quantity)
+            : 99,
+          lineTotal: price * quantity,
         };
       })
       .filter(Boolean);
-  }, [cart, products]);
+  }, [cart, products, productVariants]);
 
   const cartTotal = cartItems.reduce(
     (total, item) => total + item.lineTotal,
@@ -385,6 +513,40 @@ export default function PublicStore() {
 
       if (productError) throw productError;
 
+      const variantIds = [
+        ...new Set(
+          cartItems
+            .map((item) => item.variantId)
+            .filter(Boolean)
+        ),
+      ];
+      let currentVariants = [];
+      if (variantIds.length > 0) {
+        const { data: loadedVariants, error: variantError } =
+          await supabase
+            .from("product_variants")
+            .select(`
+              id,
+              product_id,
+              variant_name,
+              color,
+              size,
+              attributes,
+              price,
+              stock_quantity,
+              image_url,
+              is_active
+            `)
+            .in("id", variantIds);
+
+        if (variantError) throw variantError;
+        currentVariants = loadedVariants || [];
+      }
+
+      const currentVariantsById = new Map(
+        (currentVariants || []).map((variant) => [variant.id, variant])
+      );
+
       const currentProductsById = new Map(
         (currentProducts || []).map((product) => [product.id, product])
       );
@@ -414,24 +576,62 @@ export default function PublicStore() {
       }
 
       const priceChanged = cartItems.some(
-        (item) =>
-          Number(currentProductsById.get(item.id).price) !==
-          Number(item.price)
+        (item) => {
+          const currentProduct = currentProductsById.get(item.id);
+          const currentVariant = item.variantId
+            ? currentVariantsById.get(item.variantId)
+            : null;
+          const serverPrice = item.variantId
+            ? currentVariant?.price == null
+              ? Number(currentProduct.price)
+              : Number(currentVariant.price)
+            : Number(currentProduct.price);
+
+          return !currentProduct ||
+            (item.variantId &&
+              (!currentVariant ||
+                currentVariant.product_id !== item.id ||
+                !currentVariant.is_active)) ||
+            serverPrice !== Number(item.price);
+        }
       );
 
       if (priceChanged) {
         setProducts(syncProducts);
         throw new Error(
-          "Product prices have changed. Review your updated cart total before placing the order."
+          "A product or variant in your cart is unavailable or has changed. Review your cart before placing the order."
+        );
+      }
+
+      const stockExceeded = cartItems.some((item) => {
+        if (!item.variantId) return false;
+        const currentVariant = currentVariantsById.get(item.variantId);
+        return (
+          !currentVariant ||
+          !currentVariant.is_active ||
+          item.quantity > Number(currentVariant.stock_quantity)
+        );
+      });
+
+      if (stockExceeded) {
+        throw new Error(
+          "One or more variant quantities exceed available stock. Please update your cart."
         );
       }
 
       const orderedProducts = cartItems.map((item) => {
         const currentProduct = currentProductsById.get(item.id);
-        const price = Number(currentProduct.price);
+        const currentVariant = item.variantId
+          ? currentVariantsById.get(item.variantId)
+          : null;
+        const price = item.variantId
+          ? currentVariant?.price == null
+            ? Number(currentProduct.price)
+            : Number(currentVariant.price)
+          : Number(currentProduct.price);
 
         return {
-          name: currentProduct.name,
+          name: `${currentProduct.name}${item.variantId ? ` (${[currentVariant?.color, currentVariant?.size].filter(Boolean).join(" / ") || currentVariant?.variant_name})` : ""}`,
           quantity: item.quantity,
           price,
           lineTotal: price * item.quantity,
@@ -440,7 +640,13 @@ export default function PublicStore() {
 
       const items = cartItems.map((item) => ({
         product_id: item.id,
+        variant_id: item.variantId || null,
         quantity: item.quantity,
+        variant_name: item.variantName || null,
+        variant_color: item.color || null,
+        variant_size: item.size || null,
+        variant_attributes: item.attributes || null,
+        variant_image_url: item.variantId ? item.image_url : null,
       }));
 
       const { data, error: orderError } = await supabase.rpc(
@@ -652,11 +858,17 @@ export default function PublicStore() {
     <button
       type="button"
       className="public-store-order-button public-store-add-button"
-      onClick={() => addToCart(product)}
-      aria-label={`Add ${product.name} to cart`}
+      onClick={() =>
+        (productVariants[product.id] || []).length > 0
+          ? openVariantSelector(product)
+          : addToCart(product)
+      }
+      aria-label={`Choose options or add ${product.name} to cart`}
     >
       <ShoppingCart size={17} />
-      Add to Cart
+      {(productVariants[product.id] || []).length > 0
+        ? "Choose Options"
+        : "Add to Cart"}
     </button>
   );
 
@@ -1072,7 +1284,7 @@ export default function PublicStore() {
                   {cartItems.map((item) => (
                     <article
                       className="public-store-cart-item"
-                      key={item.id}
+                      key={item.cartKey}
                     >
                       <div className="public-store-cart-item-image">
                         {item.image_url ? (
@@ -1084,13 +1296,20 @@ export default function PublicStore() {
 
                       <div className="public-store-cart-item-info">
                         <h3>{item.name}</h3>
+                        {(item.color || item.size || item.variantName) && (
+                          <p className="public-store-cart-variant">
+                            {[item.color, item.size]
+                              .filter(Boolean)
+                              .join(" / ") || item.variantName}
+                          </p>
+                        )}
                         <strong>{formatPrice(item.price)}</strong>
 
                         <div className="public-store-quantity-control">
                           <button
                             type="button"
                             onClick={() =>
-                              updateCartQuantity(item.id, item.quantity - 1)
+                              updateCartQuantity(item.cartKey, item.quantity - 1)
                             }
                             aria-label={`Decrease ${item.name} quantity`}
                           >
@@ -1100,10 +1319,10 @@ export default function PublicStore() {
                           <button
                             type="button"
                             onClick={() =>
-                              updateCartQuantity(item.id, item.quantity + 1)
+                              updateCartQuantity(item.cartKey, item.quantity + 1)
                             }
                             aria-label={`Increase ${item.name} quantity`}
-                            disabled={item.quantity >= 99}
+                            disabled={item.quantity >= item.stockQuantity}
                           >
                             <Plus size={14} />
                           </button>
@@ -1114,7 +1333,7 @@ export default function PublicStore() {
                         <strong>{formatPrice(item.lineTotal)}</strong>
                         <button
                           type="button"
-                          onClick={() => removeFromCart(item.id)}
+                          onClick={() => removeFromCart(item.cartKey)}
                           aria-label={`Remove ${item.name}`}
                         >
                           <Trash2 size={16} />
@@ -1156,6 +1375,186 @@ export default function PublicStore() {
                 </div>
               </>
             )}
+          </section>
+        </div>
+      )}
+
+      {/* PRODUCT VARIANT SELECTOR */}
+      {variantProduct && (
+        <div
+          className="public-store-modal-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeVariantSelector();
+            }
+          }}
+        >
+          <section
+            className="public-store-variant-panel"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="public-variant-title"
+          >
+            {(() => {
+              const variants = productVariants[variantProduct.id] || [];
+              const selectedVariant =
+                variants.find((variant) => variant.id === selectedVariantId) ||
+                variants.find((variant) => variant.is_active && variant.stock_quantity > 0) ||
+                null;
+              const selectedPrice =
+                selectedVariant?.price == null
+                  ? Number(variantProduct.price)
+                  : Number(selectedVariant.price);
+              const maximumQuantity = selectedVariant
+                ? Math.max(0, Number(selectedVariant.stock_quantity))
+                : 0;
+
+              return (
+                <>
+                  <div className="public-store-modal-heading">
+                    <div>
+                      <span className="public-store-eyebrow">CHOOSE OPTIONS</span>
+                      <h2 id="public-variant-title">{variantProduct.name}</h2>
+                    </div>
+                    <button
+                      type="button"
+                      className="public-store-close-button"
+                      onClick={closeVariantSelector}
+                      aria-label="Close variant selector"
+                    >
+                      <X size={21} />
+                    </button>
+                  </div>
+
+                  <div className="public-store-variant-product">
+                    <div className="public-store-variant-image">
+                      {selectedVariant?.image_url || variantProduct.image_url ? (
+                        <img
+                          src={selectedVariant?.image_url || variantProduct.image_url}
+                          alt={selectedVariant?.variant_name || variantProduct.name}
+                        />
+                      ) : (
+                        <Package size={34} />
+                      )}
+                    </div>
+                    <div>
+                      <strong>{selectedVariant ? formatPrice(selectedPrice) : "Unavailable"}</strong>
+                      {selectedVariant && (
+                        <span>
+                          {maximumQuantity > 0
+                            ? `${maximumQuantity} in stock`
+                            : "Out of stock"}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="public-store-variant-list" role="radiogroup" aria-label="Available variants">
+                    {variants.map((variant) => {
+                      const unavailable =
+                        !variant.is_active || Number(variant.stock_quantity) < 1;
+                      const label =
+                        [variant.color, variant.size]
+                          .filter(Boolean)
+                          .join(" / ") ||
+                        variant.variant_name ||
+                        "Default variant";
+
+                      return (
+                        <button
+                          type="button"
+                          role="radio"
+                          aria-checked={selectedVariantId === variant.id}
+                          className={
+                            selectedVariantId === variant.id ? "active" : ""
+                          }
+                          key={variant.id}
+                          onClick={() => {
+                            setSelectedVariantId(variant.id);
+                            setVariantQuantity(1);
+                          }}
+                          disabled={unavailable}
+                        >
+                          <span>{label}</span>
+                          <small>
+                            {unavailable
+                              ? "Unavailable"
+                              : formatPrice(
+                                  variant.price == null
+                                    ? Number(variantProduct.price)
+                                    : Number(variant.price)
+                                )}
+                          </small>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {selectedVariant?.attributes &&
+                    Object.keys(selectedVariant.attributes).length > 0 && (
+                      <div className="public-store-variant-attributes">
+                        {Object.entries(selectedVariant.attributes).map(
+                          ([key, value]) => (
+                            <span key={key}>
+                              <strong>{key}:</strong> {String(value)}
+                            </span>
+                          )
+                        )}
+                      </div>
+                    )}
+
+                  <div className="public-store-variant-quantity">
+                    <span>Quantity</span>
+                    <div className="public-store-quantity-control">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVariantQuantity((current) =>
+                            Math.max(1, current - 1)
+                          )
+                        }
+                        disabled={!selectedVariant || variantQuantity <= 1}
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span>{variantQuantity}</span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setVariantQuantity((current) =>
+                            Math.min(maximumQuantity, current + 1)
+                          )
+                        }
+                        disabled={
+                          !selectedVariant ||
+                          variantQuantity >= maximumQuantity
+                        }
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="public-store-checkout-button"
+                    disabled={!selectedVariant || maximumQuantity < 1}
+                    onClick={() => {
+                      addToCart(
+                        variantProduct,
+                        selectedVariant,
+                        variantQuantity
+                      );
+                      closeVariantSelector();
+                      setCartOpen(true);
+                    }}
+                  >
+                    <ShoppingCart size={17} />
+                    Add to Cart
+                  </button>
+                </>
+              );
+            })()}
           </section>
         </div>
       )}
