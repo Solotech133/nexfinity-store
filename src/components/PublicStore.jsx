@@ -642,11 +642,6 @@ export default function PublicStore() {
         product_id: item.id,
         variant_id: item.variantId || null,
         quantity: item.quantity,
-        variant_name: item.variantName || null,
-        variant_color: item.color || null,
-        variant_size: item.size || null,
-        variant_attributes: item.attributes || null,
-        variant_image_url: item.variantId ? item.image_url : null,
       }));
 
       const { data, error: orderError } = await supabase.rpc(

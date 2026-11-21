@@ -520,37 +520,22 @@ function ProductManagerContent({ vendor }) {
 
     if (variant.id) {
       const confirmed = window.confirm(
-        `Delete variant "${variant.variant_name || [variant.color, variant.size].filter(Boolean).join(" / ") || "this variant"}"?`
+        `Deactivate variant "${variant.variant_name || [variant.color, variant.size].filter(Boolean).join(" / ") || "this variant"}"? It will remain in historical orders.`
       );
       if (!confirmed) return;
 
-      const { error: deleteError } = await supabase
+      const { error: deactivateError } = await supabase
         .from("product_variants")
-        .delete()
+        .update({
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", variant.id)
         .eq("product_id", editingId);
 
-      if (deleteError) {
-        setError(deleteError.message || "Unable to delete this variant.");
-        return;
-      }
-
-      if (variant.image_url) {
-        const imagePath = getStoragePath(variant.image_url, vendorId);
-        if (imagePath) {
-          await supabase.storage
-            .from("product-images")
-            .remove([imagePath]);
-        }
-      }
-    } else if (editingId) {
-      const { error: deactivateError } = await supabase
-        .from("product_variants")
-        .update({ is_active: false, updated_at: new Date().toISOString() })
-        .eq("product_id", savedProductId);
-
       if (deactivateError) {
-        throw deactivateError;
+        setError(deactivateError.message || "Unable to deactivate this variant.");
+        return;
       }
     }
 
