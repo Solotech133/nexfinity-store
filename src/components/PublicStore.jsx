@@ -249,6 +249,36 @@ export default function PublicStore() {
     }
   };
 
+  const orderCartViaWhatsApp = () => {
+    if (!cartItems.length) {
+      window.alert("Your shopping cart is empty.");
+      return;
+    }
+
+    const messageLines = [
+      `Hello ${storeName}, I would like to place an order.`,
+      "",
+      "MY CART:",
+      ...cartItems.map(
+        (item) =>
+          `${item.name} x ${item.quantity} @ ${formatPrice(item.price)} = ${formatPrice(item.lineTotal)}`
+      ),
+      "",
+      `Subtotal: ${formatPrice(cartTotal)}`,
+      "",
+      "Please confirm availability and delivery details.",
+    ];
+
+    const link = getWhatsAppLink(messageLines.join("\n"));
+
+    if (!link) {
+      window.alert("This store has not added a valid WhatsApp contact number yet.");
+      return;
+    }
+
+    window.location.assign(link);
+  };
+
   // CART HELPERS
   const addToCart = (product) => {
     if (!product?.id || !product.is_available) return;
@@ -1054,6 +1084,14 @@ export default function PublicStore() {
                     Delivery charges, if applicable, will be confirmed by the
                     vendor.
                   </p>
+                  <button
+                    type="button"
+                    className="public-store-whatsapp-order-button"
+                    onClick={orderCartViaWhatsApp}
+                  >
+                    <MessageCircle size={17} />
+                    Order on WhatsApp
+                  </button>
                   <button
                     type="button"
                     className="public-store-checkout-button"

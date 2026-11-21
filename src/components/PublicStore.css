@@ -1175,6 +1175,29 @@
   line-height: 1.7;
 }
 
+.public-store-whatsapp-order-button {
+  width: 100%;
+  min-height: 49px;
+  margin-bottom: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid var(--store-whatsapp);
+  border-radius: 10px;
+  background: var(--store-whatsapp);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.public-store-whatsapp-order-button:hover {
+  border-color: #1da851;
+  background: #1da851;
+}
+
 /* =====================================================
    EMPTY CART
 ===================================================== */
