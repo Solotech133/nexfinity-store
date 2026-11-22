@@ -81,6 +81,7 @@ export default function PublicStore() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [productVariants, setProductVariants] = useState({});
   const [variantProduct, setVariantProduct] = useState(null);
+  const [variantAction, setVariantAction] = useState("cart");
   const [selectedVariantId, setSelectedVariantId] = useState("");
   const [variantQuantity, setVariantQuantity] = useState(1);
   const [submittingOrder, setSubmittingOrder] = useState(false);
@@ -455,19 +456,21 @@ export default function PublicStore() {
     });
   };
 
-  const openVariantSelector = (product) => {
+  const openVariantSelector = (product, action = "cart") => {
     const variants = productVariants[product.id] || [];
     const firstAvailable = variants.find(
       (variant) =>
         variant.is_active && Number(variant.stock_quantity) > 0
     );
     setVariantProduct(product);
+    setVariantAction(action);
     setSelectedVariantId(firstAvailable?.id || "");
     setVariantQuantity(1);
   };
 
   const closeVariantSelector = () => {
     setVariantProduct(null);
+    setVariantAction("cart");
     setSelectedVariantId("");
     setVariantQuantity(1);
   };
@@ -532,6 +535,55 @@ export default function PublicStore() {
     (total, item) => total + item.lineTotal,
     0
   );
+  const cartItemCount = cartItems.reduce(
+    (total, item) => total + item.quantity,
+    0
+  );
+
+  const orderProductViaWhatsApp = (
+    product,
+    variant = null,
+    quantity = 1
+  ) => {
+    if (!product?.id || !product.is_available) {
+      window.alert("This product is currently unavailable.");
+      return;
+    }
+
+    if (
+      variant &&
+      (!variant.is_active || Number(variant.stock_quantity) < quantity)
+    ) {
+      window.alert("This variant is currently unavailable.");
+      return;
+    }
+
+    const unitPrice =
+      variant?.price == null ? Number(product.price) : Number(variant.price);
+    const variantName = variant
+      ? [variant.color, variant.size].filter(Boolean).join(" / ") ||
+        variant.variant_name
+      : "";
+    const message = [
+      `Hello ${storeName}, I would like to order:`,
+      "",
+      `Product: ${product.name}`,
+      ...(variantName ? [`Option: ${variantName}`] : []),
+      `Quantity: ${quantity}`,
+      `Price: ${formatPrice(unitPrice)}`,
+      `Total: ${formatPrice(unitPrice * quantity)}`,
+      "",
+      "Please confirm availability and delivery details.",
+    ].join("\n");
+    const link = getWhatsAppLink(message);
+
+    if (!link) {
+      window.alert("This store has not added a valid WhatsApp contact number yet.");
+      return;
+    }
+
+    window.open(link, "_blank", "noopener,noreferrer");
+  };
 
   // CUSTOMER FORM
   const handleCustomerChange = (event) => {
@@ -932,24 +984,40 @@ export default function PublicStore() {
     );
   }
 
-  // ADD TO CART BUTTON
-  const AddToCartButton = ({ product }) => (
-    <button
-      type="button"
-      className="public-store-order-button public-store-add-button"
-      onClick={() =>
-        (productVariants[product.id] || []).length > 0
-          ? openVariantSelector(product)
-          : addToCart(product)
-      }
-      aria-label={`Choose options or add ${product.name} to cart`}
-    >
-      <ShoppingCart size={17} />
-      {(productVariants[product.id] || []).length > 0
-        ? "Choose Options"
-        : "Add to Cart"}
-    </button>
-  );
+  const ProductActionButtons = ({ product }) => {
+    const hasVariants = (productVariants[product.id] || []).length > 0;
+
+    return (
+      <div className="public-store-product-actions">
+        <button
+          type="button"
+          className="public-store-order-button public-store-product-order-button"
+          onClick={() =>
+            hasVariants
+              ? openVariantSelector(product, "order")
+              : orderProductViaWhatsApp(product)
+          }
+          aria-label={`Order ${product.name} on WhatsApp`}
+        >
+          <WhatsAppIcon size={17} />
+          Order
+        </button>
+        <button
+          type="button"
+          className="public-store-order-button public-store-add-button"
+          onClick={() =>
+            hasVariants
+              ? openVariantSelector(product, "cart")
+              : addToCart(product)
+          }
+          aria-label={`Add ${product.name} to cart`}
+        >
+          <ShoppingCart size={17} />
+          Add to Cart
+        </button>
+      </div>
+    );
+  };
 
   return (
     <main
@@ -968,10 +1036,11 @@ export default function PublicStore() {
             type="button"
             className="public-store-cart-trigger"
             onClick={() => setCartOpen(true)}
-            aria-label="Open shopping cart"
+            aria-label={`Open shopping cart, ${cartItemCount} items`}
           >
             <ShoppingBag size={18} />
             <span>Cart</span>
+            <strong>{cartItemCount}</strong>
           </button>
         </div>
       </header>
@@ -1081,7 +1150,7 @@ export default function PublicStore() {
                   <div className="public-store-featured-info">
                     <h3>{product.name}</h3>
                     <strong>{formatPrice(product.price)}</strong>
-                    <AddToCartButton product={product} />
+                    <ProductActionButtons product={product} />
                   </div>
                 </article>
               ))}
@@ -1301,7 +1370,7 @@ export default function PublicStore() {
                                 </del>
                               )}
                             </div>
-                            <AddToCartButton product={product} />
+                            <ProductActionButtons product={product} />
                           </div>
                         </div>
                       </article>
@@ -1627,17 +1696,32 @@ export default function PublicStore() {
                     className="public-store-checkout-button"
                     disabled={!selectedVariant || maximumQuantity < 1}
                     onClick={() => {
-                      addToCart(
-                        variantProduct,
-                        selectedVariant,
-                        variantQuantity
-                      );
-                      closeVariantSelector();
-                      setCartOpen(true);
+                      if (variantAction === "order") {
+                        orderProductViaWhatsApp(
+                          variantProduct,
+                          selectedVariant,
+                          variantQuantity
+                        );
+                        closeVariantSelector();
+                      } else {
+                        addToCart(
+                          variantProduct,
+                          selectedVariant,
+                          variantQuantity
+                        );
+                        closeVariantSelector();
+                        setCartOpen(true);
+                      }
                     }}
                   >
-                    <ShoppingCart size={17} />
-                    Add to Cart
+                    {variantAction === "order" ? (
+                      <WhatsAppIcon size={17} />
+                    ) : (
+                      <ShoppingCart size={17} />
+                    )}
+                    {variantAction === "order"
+                      ? "Order on WhatsApp"
+                      : "Add to Cart"}
                   </button>
                 </>
               );
@@ -1911,10 +1995,15 @@ export default function PublicStore() {
           type="button"
           className="public-store-nav-item public-store-nav-cart"
           onClick={() => setCartOpen(true)}
-          aria-label="Open cart"
+          aria-label={`Open cart, ${cartItemCount} items`}
         >
           <ShoppingCart size={21} />
           <span>Cart</span>
+          {cartItemCount > 0 && (
+            <strong className="public-store-nav-badge">
+              {cartItemCount}
+            </strong>
+          )}
         </button>
 
         <button
