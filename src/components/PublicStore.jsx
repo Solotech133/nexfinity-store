@@ -1057,6 +1057,10 @@ export default function PublicStore() {
         "--store-lime": brandColor,
         "--store-olive": brandColor,
         "--store-lime-soft": `color-mix(in srgb, ${brandColor} 14%, transparent)`,
+        "--store-bg": `color-mix(in srgb, #0b0f0b 91%, ${brandColor})`,
+        "--store-surface": `color-mix(in srgb, #111711 92%, ${brandColor})`,
+        "--store-surface-raised": `color-mix(in srgb, #151c15 88%, ${brandColor})`,
+        "--store-border": `color-mix(in srgb, #2b342a 78%, ${brandColor})`,
         "--store-brand-contrast": brandContrastColor,
       }}
     >
