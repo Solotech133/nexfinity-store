@@ -18,6 +18,8 @@
   --store-surface-raised: #f8fafc;
   --store-white: #ffffff;
   --store-brand-contrast: #ffffff;
+  --store-cart-accent: #b8f500;
+  --store-cart-ink: #11150d;
   --store-radius: 18px;
   --store-whatsapp: #25d366;
   --store-shadow: 0 15px 45px rgba(32, 37, 26, 0.09);
@@ -56,6 +58,10 @@
 .public-store-page .public-store-nav-item.active,
 .public-store-page .public-store-done-button {
   color: var(--store-brand-contrast, #20251A);
+}
+
+.public-store-page .public-store-cart-trigger {
+  color: var(--store-cart-ink);
 }
 
 .public-store-page img {
@@ -140,10 +146,10 @@
   align-items: center;
   justify-content: center;
   gap: 9px;
-  border: 1px solid var(--store-lime);
+  border: 1px solid var(--store-cart-accent);
   border-radius: 10px;
-  background: var(--store-lime);
-  color: var(--store-dark);
+  background: var(--store-cart-accent);
+  color: var(--store-cart-ink);
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
@@ -151,9 +157,9 @@
 }
 
 .public-store-cart-trigger:hover {
-  background: var(--store-dark);
-  border-color: var(--store-dark);
-  color: var(--store-lime);
+  background: var(--store-cart-accent);
+  border-color: var(--store-cart-accent);
+  color: var(--store-cart-ink);
 }
 
 .public-store-cart-trigger strong {
@@ -162,14 +168,14 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: var(--store-dark);
-  color: var(--store-lime);
+  background: var(--store-cart-ink);
+  color: var(--store-cart-accent);
   font-size: 10px;
 }
 
 .public-store-cart-trigger:hover strong {
-  background: var(--store-lime);
-  color: var(--store-dark);
+  background: var(--store-cart-ink);
+  color: var(--store-cart-accent);
 }
 
 /* =====================================================
@@ -2161,14 +2167,14 @@
 }
 
 .public-store-header-right .public-store-cart-trigger {
-  color: #10150e;
+  color: var(--store-cart-ink);
 }
 
 .public-store-header-right .public-store-cart-trigger:hover,
 .public-store-header-right .public-store-cart-trigger:focus-visible {
-  border-color: var(--store-lime);
-  background: var(--store-surface-raised);
-  color: var(--store-lime);
+  border-color: var(--store-cart-accent);
+  background: var(--store-cart-accent);
+  color: var(--store-cart-ink);
 }
 
 .public-store-profile {
@@ -2326,6 +2332,20 @@
   border-color: var(--store-lime);
   background: var(--store-lime);
   color: var(--store-brand-contrast);
+}
+
+.public-store-page .public-store-header-right .public-store-cart-trigger,
+.public-store-page .public-store-header-right .public-store-cart-trigger:hover,
+.public-store-page .public-store-header-right .public-store-cart-trigger:focus-visible {
+  border-color: var(--store-cart-accent);
+  background: var(--store-cart-accent);
+  color: var(--store-cart-ink);
+}
+
+.public-store-page .public-store-cart-trigger strong,
+.public-store-page .public-store-cart-trigger:hover strong {
+  background: var(--store-cart-ink);
+  color: var(--store-cart-accent);
 }
 
 .public-store-order-button:hover,
