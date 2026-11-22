@@ -2682,3 +2682,22 @@
 #store-top.public-store-page button:focus-visible {
   outline-color: var(--store-button-accent);
 }
+
+.public-store-cart-panel .public-store-eyebrow,
+.public-store-cart-panel .public-store-modal-heading h2,
+.public-store-cart-panel .public-store-cart-item-info h3,
+.public-store-cart-panel .public-store-cart-item-info p,
+.public-store-cart-panel .public-store-cart-item-info > strong,
+.public-store-cart-panel .public-store-cart-item-end > strong,
+.public-store-cart-panel .public-store-quantity-control span,
+.public-store-cart-panel .public-store-cart-summary > div span,
+.public-store-cart-panel .public-store-cart-summary > div strong,
+.public-store-cart-panel .public-store-cart-summary > p,
+.public-store-cart-panel .public-store-cart-empty h3,
+.public-store-cart-panel .public-store-cart-empty p {
+  color: var(--store-button-accent);
+}
+
+.public-store-cart-panel .public-store-cart-empty > svg {
+  color: var(--store-button-accent);
+}
