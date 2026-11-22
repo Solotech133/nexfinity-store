@@ -27,6 +27,28 @@ const ALLOWED_IMAGE_TYPES = [
   "image/gif",
 ];
 
+function getStoreAssetStoragePath(imageUrl, userId, vendorId) {
+  if (!imageUrl) return null;
+
+  try {
+    const url = new URL(imageUrl);
+    const marker = "/storage/v1/object/public/store-assets/";
+    const markerIndex = url.pathname.indexOf(marker);
+
+    if (markerIndex === -1) return null;
+
+    const path = decodeURIComponent(
+      url.pathname.slice(markerIndex + marker.length)
+    );
+
+    if (!path.startsWith(`${userId}/${vendorId}/`)) return null;
+
+    return path;
+  } catch {
+    return null;
+  }
+}
+
 function getInitialFormData(vendor) {
   return {
     business_name: vendor?.business_name || "",
@@ -206,6 +228,7 @@ function StoreProfileForm({ vendor, setVendor }) {
 
       const filePath =
         `${user.id}/${vendor.id}/${imageType}-${Date.now()}.${safeExtension}`;
+      let uploadedPath = null;
 
       // UPLOAD IMAGE TO SUPABASE STORAGE
       const { error: uploadError } = await supabase.storage
@@ -237,6 +260,8 @@ function StoreProfileForm({ vendor, setVendor }) {
         throw uploadError;
       }
 
+      uploadedPath = filePath;
+
       // GENERATE PUBLIC IMAGE URL
       const { data: publicData } = supabase.storage
         .from("store-assets")
@@ -261,13 +286,40 @@ function StoreProfileForm({ vendor, setVendor }) {
           updated_at: new Date().toISOString(),
         })
         .eq("id", vendor.id)
+        .eq("auth_user_id", user.id)
         .select()
         .single();
 
       if (updateError) {
+        await supabase.storage
+          .from("store-assets")
+          .remove([uploadedPath]);
         throw new Error(
           `Image uploaded, but its URL could not be saved: ${updateError.message}`
         );
+      }
+
+      const oldImageUrl =
+        imageType === "logo"
+          ? vendor.store_logo_url
+          : vendor.store_banner_url;
+      const oldPath = getStoreAssetStoragePath(
+        oldImageUrl,
+        user.id,
+        vendor.id
+      );
+
+      if (oldPath && oldPath !== uploadedPath) {
+        const { error: cleanupError } = await supabase.storage
+          .from("store-assets")
+          .remove([oldPath]);
+
+        if (cleanupError) {
+          console.warn(
+            `${imageType} replacement cleanup failed:`,
+            cleanupError
+          );
+        }
       }
 
       // UPDATE PARENT VENDOR STATE

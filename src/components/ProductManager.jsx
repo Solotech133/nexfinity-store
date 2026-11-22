@@ -630,8 +630,11 @@ function ProductManagerContent({ vendor }) {
       const fileExtension =
         variant.selectedImage.name.split(".").pop()?.toLowerCase() ||
         "jpg";
-      const fileName = `${crypto.randomUUID()}.${fileExtension}`;
-      const filePath = `${vendorId}/variants/${fileName}`;
+      const safeExtension = /^[a-z0-9]+$/.test(fileExtension)
+        ? fileExtension
+        : "jpg";
+      const filePath =
+        `${vendorId}/variants/${crypto.randomUUID()}.${safeExtension}`;
 
       const { error: uploadError } = await supabase.storage
         .from("product-images")
@@ -776,6 +779,7 @@ function ProductManagerContent({ vendor }) {
     setSaving(true);
 
     let uploadedImageUrl = null;
+    const uploadedVariantPaths = [];
 
     try {
       if (selectedImage) {
@@ -883,6 +887,15 @@ function ProductManagerContent({ vendor }) {
               : {}),
           };
           const variantImageUrl = await uploadVariantImage(variant);
+          if (variant.selectedImage && variantImageUrl) {
+            const uploadedVariantPath = getStoragePath(
+              variantImageUrl,
+              vendorId
+            );
+            if (uploadedVariantPath) {
+              uploadedVariantPaths.push(uploadedVariantPath);
+            }
+          }
           const variantPayload = {
             product_id: savedProductId,
             variant_name: variant.variant_name.trim() || null,
@@ -984,6 +997,12 @@ function ProductManagerContent({ vendor }) {
       await loadProducts();
     } catch (err) {
       console.error("Product save error:", err);
+
+      if (uploadedVariantPaths.length > 0) {
+        await supabase.storage
+          .from("product-images")
+          .remove(uploadedVariantPaths);
+      }
 
       setError(
         err?.message ||
