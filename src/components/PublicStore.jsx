@@ -19,8 +19,6 @@ import {
   ShoppingCart,
   CheckCircle2,
   ArrowLeft,
-  Home,
-  Grid2X2,
 } from "lucide-react";
 
 import { supabase } from "../lib/supabase";
@@ -312,36 +310,6 @@ export default function PublicStore() {
     }
 
     return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
-  };
-
-  // APP-STYLE NAVIGATION HELPERS
-  const scrollToSection = (sectionId) => {
-    document.getElementById(sectionId)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  };
-
-  const goHome = () => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const openCategories = () => {
-    setActiveCategory("All");
-    setActiveSubcategory("All");
-    scrollToSection("store-category-list");
-  };
-
-  const contactVendor = () => {
-    const link = getWhatsAppLink(
-      `Hello ${storeName}, I found your online store and would like to make an enquiry.`
-    );
-
-    if (link) {
-      window.open(link, "_blank", "noopener,noreferrer");
-    } else {
-      window.alert("This store has not added a valid WhatsApp contact number yet.");
-    }
   };
 
   const orderCartViaWhatsApp = () => {
@@ -1966,56 +1934,6 @@ export default function PublicStore() {
         </div>
       )}
 
-      {/* MOBILE-ONLY BOTTOM NAVIGATION */}
-      <nav
-        className="public-store-bottom-nav"
-        aria-label="Store navigation"
-      >
-        <button
-          type="button"
-          className="public-store-nav-item"
-          onClick={goHome}
-          aria-label="Go to home"
-        >
-          <Home size={21} />
-          <span>Home</span>
-        </button>
-
-        <button
-          type="button"
-          className="public-store-nav-item"
-          onClick={openCategories}
-          aria-label="Browse product categories"
-        >
-          <Grid2X2 size={21} />
-          <span>Categories</span>
-        </button>
-
-        <button
-          type="button"
-          className="public-store-nav-item public-store-nav-cart"
-          onClick={() => setCartOpen(true)}
-          aria-label={`Open cart, ${cartItemCount} items`}
-        >
-          <ShoppingCart size={21} />
-          <span>Cart</span>
-          {cartItemCount > 0 && (
-            <strong className="public-store-nav-badge">
-              {cartItemCount}
-            </strong>
-          )}
-        </button>
-
-        <button
-          type="button"
-          className="public-store-nav-item"
-          onClick={contactVendor}
-          aria-label="Contact vendor on WhatsApp"
-        >
-          <WhatsAppIcon size={21} />
-          <span>Contact</span>
-        </button>
-      </nav>
     </main>
   );
 }
