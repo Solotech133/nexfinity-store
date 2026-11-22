@@ -396,16 +396,6 @@ function ProductManagerContent({ vendor }) {
         ...variant,
         material: variant.attributes?.material || "",
         style: variant.attributes?.style || "",
-        customAttributes: (() => {
-          if (!variant.attributes) return "";
-          const custom = { ...variant.attributes };
-          delete custom.material;
-          delete custom.style;
-          delete custom.customAttributes;
-          return Object.keys(custom).length > 0
-            ? JSON.stringify(custom)
-            : "";
-        })(),
         selectedImage: null,
         imagePreview: "",
         removeExistingImage: false,
@@ -494,7 +484,7 @@ function ProductManagerContent({ vendor }) {
         is_active: true,
         material: "",
         style: "",
-        customAttributes: "",
+        attributes: {},
         selectedImage: null,
         imagePreview: "",
         removeExistingImage: false,
@@ -865,27 +855,17 @@ function ProductManagerContent({ vendor }) {
       if (variantsEnabled) {
         for (let index = 0; index < variants.length; index += 1) {
           const variant = variants[index];
-          let customAttributes = {};
+          const attributes = { ...variant.attributes };
+          delete attributes.material;
+          delete attributes.style;
+          delete attributes.customAttributes;
 
-          if (variant.customAttributes?.trim()) {
-            try {
-              customAttributes = JSON.parse(variant.customAttributes);
-            } catch {
-              throw new Error(
-                "Custom variant attributes must be valid JSON."
-              );
-            }
+          if (variant.material?.trim()) {
+            attributes.material = variant.material.trim();
           }
-
-          const attributes = {
-            ...customAttributes,
-            ...(variant.material?.trim()
-              ? { material: variant.material.trim() }
-              : {}),
-            ...(variant.style?.trim()
-              ? { style: variant.style.trim() }
-              : {}),
-          };
+          if (variant.style?.trim()) {
+            attributes.style = variant.style.trim();
+          }
           const variantImageUrl = await uploadVariantImage(variant);
           if (variant.selectedImage && variantImageUrl) {
             const uploadedVariantPath = getStoragePath(
@@ -1647,23 +1627,6 @@ function ProductManagerContent({ vendor }) {
                               />
                             </label>
                           </div>
-
-                          <label>
-                            Other attributes (optional JSON)
-                            <textarea
-                              rows={2}
-                              value={variant.customAttributes || ""}
-                              onChange={(event) =>
-                                updateVariant(
-                                  key,
-                                  "customAttributes",
-                                  event.target.value
-                                )
-                              }
-                              placeholder={'{"fit":"regular","length":"long"}'}
-                              maxLength={2000}
-                            />
-                          </label>
 
                           <div className="product-variant-image">
                             {preview ? (
