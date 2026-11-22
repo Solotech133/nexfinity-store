@@ -61,34 +61,6 @@ const normalizeNigerianWhatsAppNumber = (phone) => {
 const getCartStorageKey = (slug) =>
   `nexfinity-store-cart:${encodeURIComponent(String(slug || ""))}`;
 
-const DEFAULT_STORE_BRAND_COLOR = "#B8F500";
-
-function getStoreBrandColor(value) {
-  return /^#[0-9A-Fa-f]{6}$/.test(value || "")
-    ? value
-    : DEFAULT_STORE_BRAND_COLOR;
-}
-
-function getBrandContrastColor(color) {
-  const channels = color
-    .slice(1)
-    .match(/.{2}/g)
-    .map((channel) => parseInt(channel, 16) / 255)
-    .map((channel) =>
-      channel <= 0.04045
-        ? channel / 12.92
-        : ((channel + 0.055) / 1.055) ** 2.4
-    );
-  const luminance =
-    channels[0] * 0.2126 +
-    channels[1] * 0.7152 +
-    channels[2] * 0.0722;
-  const darkContrast = (luminance + 0.05) / 0.05;
-  const lightContrast = 1.05 / (luminance + 0.05);
-
-  return darkContrast >= lightContrast ? "#11150d" : "#ffffff";
-}
-
 export default function PublicStore() {
   const { slug } = useParams();
 
@@ -309,8 +281,6 @@ export default function PublicStore() {
     }).format(Number(price) || 0);
 
   const storeName = store?.store_name || store?.business_name || "the store";
-  const brandColor = getStoreBrandColor(store?.store_brand_color);
-  const brandContrastColor = getBrandContrastColor(brandColor);
 
   useEffect(() => {
     if (!store) return;
@@ -1053,16 +1023,6 @@ export default function PublicStore() {
     <main
       className="public-store-page public-store-app"
       id="store-top"
-      style={{
-        "--store-lime": brandColor,
-        "--store-olive": brandColor,
-        "--store-lime-soft": `color-mix(in srgb, ${brandColor} 14%, transparent)`,
-        "--store-bg": `color-mix(in srgb, #0b0f0b 91%, ${brandColor})`,
-        "--store-surface": `color-mix(in srgb, #111711 92%, ${brandColor})`,
-        "--store-surface-raised": `color-mix(in srgb, #151c15 88%, ${brandColor})`,
-        "--store-border": `color-mix(in srgb, #2b342a 78%, ${brandColor})`,
-        "--store-brand-contrast": brandContrastColor,
-      }}
     >
       {/* HEADER */}
       <header className="public-store-header">

@@ -6,17 +6,18 @@
 ===================================================== */
 
 :root {
-  --store-lime: #b8f500;
-  --store-lime-soft: color-mix(in srgb, var(--store-lime) 14%, transparent);
-  --store-olive: #b8f500;
-  --store-dark: #f4f7f1;
-  --store-dark-soft: #1b211a;
-  --store-muted: #a4ada2;
-  --store-border: #2b342a;
-  --store-bg: #0b0f0b;
-  --store-surface: #111711;
-  --store-surface-raised: #151c15;
-  --store-white: #111711;
+  --store-lime: #2563eb;
+  --store-lime-soft: color-mix(in srgb, var(--store-lime) 10%, transparent);
+  --store-olive: #1d4ed8;
+  --store-dark: #172033;
+  --store-dark-soft: #f8fafc;
+  --store-muted: #667085;
+  --store-border: #e5eaf2;
+  --store-bg: #ffffff;
+  --store-surface: #ffffff;
+  --store-surface-raised: #f8fafc;
+  --store-white: #ffffff;
+  --store-brand-contrast: #ffffff;
   --store-radius: 18px;
   --store-whatsapp: #25d366;
   --store-shadow: 0 15px 45px rgba(32, 37, 26, 0.09);
