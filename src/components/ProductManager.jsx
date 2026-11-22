@@ -342,7 +342,6 @@ function ProductManagerContent({ vendor }) {
     setForm(emptyForm);
     setVariantsEnabled(false);
     setVariants([]);
-    setVariantImageFiles({});
     setError("");
     setSuccess("");
     setShowForm(true);
@@ -368,7 +367,6 @@ function ProductManagerContent({ vendor }) {
       is_featured: Boolean(product.is_featured),
       is_available: Boolean(product.is_available),
     });
-    setVariantImageFiles({});
     setVariants([]);
     setVariantsEnabled(false);
 
@@ -433,7 +431,6 @@ function ProductManagerContent({ vendor }) {
     setForm(emptyForm);
     setVariantsEnabled(false);
     setVariants([]);
-    setVariantImageFiles({});
     resetImageSelection();
     setError("");
   };
@@ -563,11 +560,6 @@ function ProductManagerContent({ vendor }) {
       event.target.value = "";
       return;
     }
-
-    setVariantImageFiles((current) => ({
-      ...current,
-      [key]: file,
-    }));
 
     setVariants((current) =>
       current.map((variant) => {
