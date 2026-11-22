@@ -2683,11 +2683,6 @@
   outline-color: var(--store-button-accent);
 }
 
-.public-store-cart-panel .public-store-cart-item-info h3,
-.public-store-cart-panel .public-store-cart-item-info p,
-.public-store-cart-panel .public-store-cart-item-info > strong,
-.public-store-cart-panel .public-store-cart-item-end > strong,
-.public-store-cart-panel .public-store-quantity-control span,
 .public-store-cart-panel .public-store-cart-summary > div span,
 .public-store-cart-panel .public-store-cart-summary > div strong,
 .public-store-cart-panel .public-store-cart-summary > p {
@@ -2699,6 +2694,22 @@
 .public-store-cart-panel .public-store-cart-empty h3,
 .public-store-cart-panel .public-store-cart-empty p {
   color: var(--store-dark);
+}
+
+.public-store-cart-panel .public-store-cart-item-info > strong,
+.public-store-cart-panel .public-store-cart-item-info h3,
+.public-store-cart-panel .public-store-cart-item-info p,
+.public-store-cart-panel .public-store-cart-item-end > strong,
+.public-store-cart-panel .public-store-quantity-control span {
+  color: var(--store-dark);
+}
+
+#store-top.public-store-page .public-store-cart-panel .public-store-checkout-button,
+#store-top.public-store-page .public-store-cart-panel .public-store-checkout-button:hover,
+#store-top.public-store-page .public-store-cart-panel .public-store-checkout-button:focus-visible {
+  border-color: var(--store-cart-ink);
+  background: var(--store-cart-ink);
+  color: #ffffff;
 }
 
 .public-store-cart-panel .public-store-cart-empty > svg {
