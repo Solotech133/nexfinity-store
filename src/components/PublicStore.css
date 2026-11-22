@@ -18,8 +18,10 @@
   --store-surface-raised: #f8fafc;
   --store-white: #ffffff;
   --store-brand-contrast: #ffffff;
-  --store-cart-accent: #b8f500;
-  --store-cart-ink: #11150d;
+  --store-button-accent: #b8f500;
+  --store-button-text: #11150d;
+  --store-cart-accent: var(--store-button-accent);
+  --store-cart-ink: var(--store-button-text);
   --store-radius: 18px;
   --store-whatsapp: #25d366;
   --store-shadow: 0 15px 45px rgba(32, 37, 26, 0.09);
@@ -2831,4 +2833,17 @@
   .public-store-products-section {
     margin-top: 42px;
   }
+}
+
+#store-top.public-store-page button,
+#store-top.public-store-page button:hover,
+#store-top.public-store-page button:focus-visible,
+#store-top.public-store-page button:active {
+  border-color: var(--store-button-accent);
+  background-color: var(--store-button-accent);
+  color: var(--store-button-text);
+}
+
+#store-top.public-store-page button:focus-visible {
+  outline-color: var(--store-button-accent);
 }
