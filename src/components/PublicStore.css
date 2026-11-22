@@ -7,7 +7,7 @@
 
 :root {
   --store-lime: #b8f500;
-  --store-lime-soft: rgba(184, 245, 0, 0.12);
+  --store-lime-soft: color-mix(in srgb, var(--store-lime) 14%, transparent);
   --store-olive: #b8f500;
   --store-dark: #f4f7f1;
   --store-dark-soft: #1b211a;
@@ -181,7 +181,12 @@
   position: relative;
   height: 310px;
   overflow: hidden;
-  background: linear-gradient(115deg, #20251a, #394128 48%, #718a24);
+  background: linear-gradient(
+    115deg,
+    #101510,
+    #20291f 48%,
+    color-mix(in srgb, var(--store-lime) 38%, #111711)
+  );
 }
 
 .public-store-banner {
@@ -200,8 +205,13 @@
   justify-content: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 80% 20%, rgba(184, 245, 0, 0.23), transparent 32%),
-    linear-gradient(115deg, #20251a, #394128 55%, #617900);
+    radial-gradient(circle at 80% 20%, var(--store-lime-soft), transparent 32%),
+    linear-gradient(
+      115deg,
+      #101510,
+      #20291f 55%,
+      color-mix(in srgb, var(--store-lime) 38%, #111711)
+    );
 }
 
 .public-store-banner-placeholder > span {
@@ -1308,7 +1318,7 @@
 .public-store-checkout-form input:focus,
 .public-store-checkout-form textarea:focus {
   border-color: var(--store-olive);
-  box-shadow: 0 0 0 3px rgba(184, 245, 0, 0.14);
+  box-shadow: 0 0 0 3px var(--store-lime-soft);
 }
 
 .public-store-checkout-form input::placeholder,
@@ -2200,7 +2210,7 @@
 }
 
 .public-store-featured-image > span {
-  color: #11150d;
+  color: var(--store-brand-contrast);
 }
 
 .public-store-product-bottom {
@@ -2242,7 +2252,7 @@
 .public-store-done-button {
   border-color: var(--store-lime);
   background: var(--store-lime);
-  color: #11150d;
+  color: var(--store-brand-contrast);
 }
 
 .public-store-category-list button.active:hover,
@@ -2252,8 +2262,8 @@
 .public-store-home-link:hover,
 .public-store-done-button:hover {
   border-color: var(--store-lime);
-  background: #a8df00;
-  color: #11150d;
+  background: color-mix(in srgb, var(--store-lime) 86%, white);
+  color: var(--store-brand-contrast);
 }
 
 .public-store-subcategory-list {
@@ -2285,7 +2295,7 @@
 .public-store-subcategory-list button:hover,
 .public-store-subcategory-list button.active {
   border-color: var(--store-lime);
-  background: rgba(184, 245, 0, 0.1);
+  background: var(--store-lime-soft);
   color: var(--store-lime);
 }
 
@@ -2297,7 +2307,7 @@
 .public-store-products-icon,
 .public-store-error-icon,
 .public-store-success-icon {
-  background: rgba(184, 245, 0, 0.12);
+  background: var(--store-lime-soft);
   color: var(--store-lime);
 }
 
@@ -2307,15 +2317,15 @@
 .public-store-checkout-button {
   border-color: var(--store-lime);
   background: var(--store-lime);
-  color: #11150d;
+  color: var(--store-brand-contrast);
 }
 
 .public-store-order-button:hover,
 .public-store-add-button:hover,
 .public-store-checkout-button:hover {
-  border-color: #d3ff56;
-  background: #d3ff56;
-  color: #11150d;
+  border-color: color-mix(in srgb, var(--store-lime) 84%, white);
+  background: color-mix(in srgb, var(--store-lime) 84%, white);
+  color: var(--store-brand-contrast);
 }
 
 .public-store-cart-panel,
@@ -2421,7 +2431,7 @@
 .public-store-nav-item:focus-visible,
 .public-store-nav-item:active {
   border-color: var(--store-lime);
-  background: rgba(184, 245, 0, 0.1);
+  background: var(--store-lime-soft);
   color: var(--store-lime);
 }
 
@@ -2516,7 +2526,7 @@
 
 .public-store-variant-list button.active {
   border-color: var(--store-lime);
-  background: rgba(184, 245, 0, 0.1);
+  background: var(--store-lime-soft);
 }
 
 .public-store-variant-list button:disabled {
@@ -2630,5 +2640,163 @@
     padding-right: 5px;
     padding-left: 5px;
     font-size: 9px;
+  }
+}
+
+.public-store-header {
+  position: sticky;
+  top: 0;
+  background: rgba(11, 15, 11, 0.88);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.public-store-banner-wrap {
+  height: clamp(240px, 34vw, 410px);
+}
+
+.public-store-banner {
+  object-fit: cover;
+}
+
+.public-store-banner-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.02) 28%,
+    rgba(7, 11, 8, 0.7)
+  );
+}
+
+.public-store-profile {
+  z-index: 1;
+  margin: -38px auto 0;
+  padding: 18px 22px;
+  border: 1px solid var(--store-border);
+  border-radius: 20px;
+  background: rgba(17, 23, 17, 0.94);
+  box-shadow: 0 20px 55px rgba(0, 0, 0, 0.28);
+}
+
+.public-store-logo {
+  width: 88px;
+  height: 88px;
+  margin-top: 0;
+  border: 2px solid color-mix(in srgb, var(--store-lime) 65%, white);
+  border-radius: 19px;
+  background: var(--store-lime-soft);
+  box-shadow: none;
+}
+
+.public-store-identity {
+  padding-top: 0;
+}
+
+.public-store-content {
+  margin-top: 38px;
+}
+
+.public-store-about {
+  padding: 0 0 26px;
+  border: 0;
+  border-bottom: 1px solid var(--store-border);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.public-store-about > p {
+  margin-top: 12px;
+  line-height: 1.8;
+}
+
+.public-store-featured-section {
+  margin-top: 46px;
+}
+
+.public-store-products-section {
+  margin-top: 54px;
+}
+
+.public-store-featured-grid,
+.public-store-products-grid {
+  gap: 17px;
+}
+
+.public-store-featured-card,
+.public-store-product-card {
+  border-radius: 18px;
+  background: linear-gradient(155deg, #151c15, #101510 75%);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.2);
+}
+
+.public-store-featured-card:hover,
+.public-store-product-card:hover {
+  border-color: color-mix(in srgb, var(--store-lime) 36%, var(--store-border));
+  transform: translateY(-4px);
+}
+
+.public-store-featured-image,
+.public-store-product-image {
+  background:
+    radial-gradient(
+      circle at 50% 40%,
+      var(--store-lime-soft),
+      transparent 72%
+    ),
+    #0d120d;
+}
+
+.public-store-order-button,
+.public-store-add-button,
+.public-store-checkout-button,
+.public-store-cart-trigger {
+  border-radius: 12px;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.public-store-order-button:hover,
+.public-store-add-button:hover,
+.public-store-checkout-button:hover,
+.public-store-cart-trigger:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .public-store-banner-wrap {
+    height: clamp(180px, 52vw, 270px);
+  }
+
+  .public-store-profile {
+    margin-top: -26px;
+    padding: 12px;
+    align-items: center;
+    gap: 13px;
+  }
+
+  .public-store-logo {
+    width: 68px;
+    height: 68px;
+    margin-top: 0;
+    border-radius: 16px;
+  }
+
+  .public-store-content {
+    margin-top: 28px;
+  }
+
+  .public-store-about {
+    padding-bottom: 21px;
+  }
+
+  .public-store-featured-section {
+    margin-top: 36px;
+  }
+
+  .public-store-products-section {
+    margin-top: 42px;
   }
 }
