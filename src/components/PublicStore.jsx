@@ -58,6 +58,9 @@ const normalizeNigerianWhatsAppNumber = (phone) => {
   return /^234[789]\d{9}$/.test(number) ? number : null;
 };
 
+const getCartStorageKey = (slug) =>
+  `nexfinity-store-cart:${encodeURIComponent(String(slug || ""))}`;
+
 export default function PublicStore() {
   const { slug } = useParams();
 
@@ -82,6 +85,7 @@ export default function PublicStore() {
   const [variantQuantity, setVariantQuantity] = useState(1);
   const [submittingOrder, setSubmittingOrder] = useState(false);
   const submissionInProgress = useRef(false);
+  const cartPersistenceReady = useRef(false);
   const [checkoutError, setCheckoutError] = useState("");
   const [orderResult, setOrderResult] = useState(null);
   const [copiedReference, setCopiedReference] = useState(false);
@@ -98,12 +102,12 @@ export default function PublicStore() {
     let isMounted = true;
 
     async function loadStore() {
+      cartPersistenceReady.current = false;
       setLoading(true);
       setError("");
       setProductsError("");
       setStore(null);
       setProducts([]);
-      setCart({});
       setProductVariants({});
       setVariantProduct(null);
       setSelectedVariantId("");
@@ -137,6 +141,24 @@ export default function PublicStore() {
         }
 
         setStore(storeData);
+
+        try {
+          const savedCart = window.localStorage.getItem(
+            getCartStorageKey(slug)
+          );
+          const parsedCart = savedCart ? JSON.parse(savedCart) : {};
+          setCart(
+            parsedCart &&
+            typeof parsedCart === "object" &&
+            !Array.isArray(parsedCart)
+              ? parsedCart
+              : {}
+          );
+        } catch (cartStorageError) {
+          console.error("Cart restoration error:", cartStorageError);
+          setCart({});
+        }
+        cartPersistenceReady.current = true;
 
         const {
           data: productData,
@@ -191,7 +213,6 @@ export default function PublicStore() {
                   "product_id",
                   loadedProducts.map((product) => product.id)
                 )
-                .eq("is_active", true)
                 .order("sort_order", { ascending: true });
 
             if (!isMounted) return;
@@ -236,6 +257,19 @@ export default function PublicStore() {
       isMounted = false;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (!slug || !cartPersistenceReady.current) return;
+
+    try {
+      window.localStorage.setItem(
+        getCartStorageKey(slug),
+        JSON.stringify(cart)
+      );
+    } catch (cartStorageError) {
+      console.error("Cart persistence error:", cartStorageError);
+    }
+  }, [cart, slug]);
 
   // GENERAL HELPERS
   const formatPrice = (price) =>
@@ -315,6 +349,13 @@ export default function PublicStore() {
       return;
     }
 
+    if (cartItems.some((item) => item.unavailable)) {
+      window.alert(
+        "One or more variants are unavailable or out of stock. Please update your cart."
+      );
+      return;
+    }
+
     const messageLines = [
       `Hello ${storeName}, I would like to place an order.`,
       "",
@@ -348,6 +389,12 @@ export default function PublicStore() {
       return;
     }
 
+    const safeQuantity =
+      Number.isInteger(Number(quantity)) &&
+      Number(quantity) >= 1
+        ? Math.floor(Number(quantity))
+        : 1;
+
     setOrderResult(null);
 
     const cartKey = `${product.id}::${variant?.id || "base"}`;
@@ -358,7 +405,7 @@ export default function PublicStore() {
       ...previous,
       [cartKey]: {
         quantity: Math.min(
-          (previous[cartKey]?.quantity || 0) + quantity,
+          (Number(previous[cartKey]?.quantity) || 0) + safeQuantity,
           variant ? Number(variant.stock_quantity) : 99
         ),
         variantId: variant?.id || null,
@@ -378,10 +425,13 @@ export default function PublicStore() {
         const selectedVariant = Object.values(productVariants)
           .flat()
           .find((variant) => variant.id === existing.variantId);
-        maximum = selectedVariant?.stock_quantity ?? 0;
+        maximum =
+          selectedVariant?.is_active
+            ? Number(selectedVariant.stock_quantity)
+            : 0;
       }
 
-      if (quantity <= 0) {
+      if (quantity <= 0 || maximum < 1) {
         delete updated[cartKey];
       } else {
         updated[cartKey] = {
@@ -407,8 +457,12 @@ export default function PublicStore() {
 
   const openVariantSelector = (product) => {
     const variants = productVariants[product.id] || [];
+    const firstAvailable = variants.find(
+      (variant) =>
+        variant.is_active && Number(variant.stock_quantity) > 0
+    );
     setVariantProduct(product);
-    setSelectedVariantId(variants[0]?.id || "");
+    setSelectedVariantId(firstAvailable?.id || "");
     setVariantQuantity(1);
   };
 
@@ -434,15 +488,24 @@ export default function PublicStore() {
             )
           : null;
 
-        if (variant && (!variant.is_active || Number(variant.stock_quantity) < 1)) {
-          return null;
-        }
-
-        const quantity = cartEntry.quantity || 0;
+        const parsedQuantity = Math.floor(Number(cartEntry.quantity) || 0);
+        const quantity =
+          parsedQuantity >= 1
+            ? variant
+              ? variant.is_active
+                ? Math.min(parsedQuantity, Number(variant.stock_quantity))
+                : 0
+              : Math.min(parsedQuantity, 99)
+            : 0;
         const price =
           variant?.price == null
-            ? cartEntry.unitPrice ?? Number(product.price)
+            ? Number(product.price)
             : Number(variant.price);
+        const unavailable =
+          Boolean(variantId) &&
+          (!variant ||
+            !variant.is_active ||
+            Number(variant.stock_quantity) < 1);
 
         return {
           ...product,
@@ -455,9 +518,10 @@ export default function PublicStore() {
           image_url: variant?.image_url || product.image_url,
           price,
           quantity,
-          stockQuantity: variant
+          unavailable,
+          stockQuantity: variant && variant.is_active
             ? Number(variant.stock_quantity)
-            : 99,
+            : 0,
           lineTotal: price * quantity,
         };
       })
@@ -535,7 +599,8 @@ export default function PublicStore() {
               price,
               stock_quantity,
               image_url,
-              is_active
+              is_active,
+              sort_order
             `)
             .in("id", variantIds);
 
@@ -546,6 +611,25 @@ export default function PublicStore() {
       const currentVariantsById = new Map(
         (currentVariants || []).map((variant) => [variant.id, variant])
       );
+      if (currentVariants.length > 0) {
+        setProductVariants((previous) => {
+          const next = { ...previous };
+          for (const variant of currentVariants) {
+            const productVariantsForId = (
+              next[variant.product_id] || []
+            ).filter((item) => item.id !== variant.id);
+            next[variant.product_id] = [
+              ...productVariantsForId,
+              variant,
+            ].sort(
+              (left, right) =>
+                Number(left.sort_order || 0) -
+                Number(right.sort_order || 0)
+            );
+          }
+          return next;
+        });
+      }
 
       const currentProductsById = new Map(
         (currentProducts || []).map((product) => [product.id, product])
@@ -709,18 +793,18 @@ export default function PublicStore() {
       setCart({});
       setCheckoutOpen(false);
       setCartOpen(false);
+      setOrderResult({
+        orderId: result.order_id,
+        reference: orderReference,
+        total: orderTotal,
+        items: orderedProducts,
+      });
+      setCopiedReference(false);
 
       if (whatsappLink) {
         window.location.assign(whatsappLink);
         return;
       }
-
-      setOrderResult({
-        orderId: result.order_id,
-        reference: orderReference,
-        total: orderTotal,
-      });
-      setCopiedReference(false);
     } catch (submitError) {
       console.error("Checkout error:", submitError);
 
@@ -1298,6 +1382,11 @@ export default function PublicStore() {
                               .join(" / ") || item.variantName}
                           </p>
                         )}
+                        {item.unavailable && (
+                          <p className="public-store-cart-variant">
+                            This option is unavailable
+                          </p>
+                        )}
                         <strong>{formatPrice(item.price)}</strong>
 
                         <div className="public-store-quantity-control">
@@ -1317,7 +1406,10 @@ export default function PublicStore() {
                               updateCartQuantity(item.cartKey, item.quantity + 1)
                             }
                             aria-label={`Increase ${item.name} quantity`}
-                            disabled={item.quantity >= item.stockQuantity}
+                            disabled={
+                              item.unavailable ||
+                              item.quantity >= item.stockQuantity
+                            }
                           >
                             <Plus size={14} />
                           </button>
@@ -1734,6 +1826,25 @@ export default function PublicStore() {
               <span>Order reference</span>
               <strong>{orderResult.reference}</strong>
             </div>
+
+            {orderResult.items?.length > 0 && (
+              <div className="public-store-success-items">
+                {orderResult.items.map((item, index) => (
+                  <div
+                    className="public-store-success-item"
+                    key={`${item.name}-${index}`}
+                  >
+                    <div>
+                      <strong>{item.name}</strong>
+                      <span>
+                        {formatPrice(item.price)} × {item.quantity}
+                      </span>
+                    </div>
+                    <strong>{formatPrice(item.lineTotal)}</strong>
+                  </div>
+                ))}
+              </div>
+            )}
 
             <button
               type="button"

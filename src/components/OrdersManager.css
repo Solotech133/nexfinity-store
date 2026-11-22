@@ -577,6 +577,11 @@
   font-size: 11px;
 }
 
+.orders-variant-details {
+  display: grid;
+  gap: 3px;
+}
+
 .orders-total-line {
   display: flex;
   justify-content: space-between;

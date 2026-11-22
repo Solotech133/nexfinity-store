@@ -852,6 +852,20 @@ function ProductManagerContent({ vendor }) {
 
       const savedProductId = result.data.id;
 
+      if (editingId && !variantsEnabled) {
+        const { error: deactivateVariantsError } = await supabase
+          .from("product_variants")
+          .update({
+            is_active: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("product_id", savedProductId);
+
+        if (deactivateVariantsError) {
+          throw deactivateVariantsError;
+        }
+      }
+
       if (variantsEnabled) {
         for (let index = 0; index < variants.length; index += 1) {
           const variant = variants[index];

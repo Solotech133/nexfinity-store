@@ -1,6 +1,5 @@
 begin;
 
--- Add variant snapshots and stock-restoration tracking to historical orders.
 alter table public.order_items
   add column if not exists variant_id uuid,
   add column if not exists variant_name text,
@@ -11,18 +10,75 @@ alter table public.order_items
   add column if not exists stock_restored boolean not null default false;
 
 do $$
+declare
+  existing_fk_name text;
 begin
+  for existing_fk_name in
+    select con.conname
+    from pg_catalog.pg_constraint con
+    where con.conrelid = 'public.order_items'::regclass
+      and con.contype = 'f'
+      and con.confrelid = 'public.product_variants'::regclass
+      and pg_catalog.cardinality(con.conkey) = 1
+      and pg_catalog.cardinality(con.confkey) = 1
+      and con.conkey[1] = (
+        select att.attnum
+        from pg_catalog.pg_attribute att
+        where att.attrelid = 'public.order_items'::regclass
+          and att.attname = 'variant_id'
+          and not att.attisdropped
+      )
+      and con.confkey[1] = (
+        select att.attnum
+        from pg_catalog.pg_attribute att
+        where att.attrelid = 'public.product_variants'::regclass
+          and att.attname = 'id'
+          and not att.attisdropped
+      )
+  loop
+    if (
+      select con.confdeltype
+      from pg_catalog.pg_constraint con
+      where con.conrelid = 'public.order_items'::regclass
+        and con.conname = existing_fk_name
+    ) <> 'r'
+    then
+      execute pg_catalog.format(
+        'alter table public.order_items drop constraint %I',
+        existing_fk_name
+      );
+    end if;
+  end loop;
+
   if not exists (
     select 1
-    from pg_constraint
-    where conname = 'order_items_variant_id_fkey'
-      and conrelid = 'public.order_items'::regclass
+    from pg_catalog.pg_constraint con
+    where con.conrelid = 'public.order_items'::regclass
+      and con.contype = 'f'
+      and con.confdeltype = 'r'
+      and con.confrelid = 'public.product_variants'::regclass
+      and pg_catalog.cardinality(con.conkey) = 1
+      and pg_catalog.cardinality(con.confkey) = 1
+      and con.conkey[1] = (
+        select att.attnum
+        from pg_catalog.pg_attribute att
+        where att.attrelid = 'public.order_items'::regclass
+          and att.attname = 'variant_id'
+          and not att.attisdropped
+      )
+      and con.confkey[1] = (
+        select att.attnum
+        from pg_catalog.pg_attribute att
+        where att.attrelid = 'public.product_variants'::regclass
+          and att.attname = 'id'
+          and not att.attisdropped
+      )
   ) then
     alter table public.order_items
       add constraint order_items_variant_id_fkey
       foreign key (variant_id)
       references public.product_variants(id)
-      on delete set null;
+      on delete restrict;
   end if;
 end;
 $$;
@@ -34,13 +90,11 @@ create index if not exists order_items_variant_stock_restored_idx
   on public.order_items(order_id, variant_id, stock_restored)
   where variant_id is not null;
 
--- Validate and deduct variant stock when an order item is inserted.
--- The enclosing create_store_order call provides transaction/rollback semantics.
 create or replace function public.validate_variant_order_item()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   selected_variant public.product_variants%rowtype;
@@ -50,7 +104,6 @@ begin
     raise exception 'Quantity must be at least 1.';
   end if;
 
-  -- NULL variant_id preserves the legacy base-product checkout path.
   if new.variant_id is null then
     select *
     into selected_product
@@ -84,7 +137,20 @@ begin
     return new;
   end if;
 
-  -- Lock the variant row to serialize concurrent purchases.
+  select *
+  into selected_product
+  from public.products
+  where id = COALESCE(new.product_id, (
+    select pv.product_id
+    from public.product_variants pv
+    where pv.id = new.variant_id
+  ))
+  for update;
+
+  if not found then
+    raise exception 'A product in your cart is unavailable.';
+  end if;
+
   select *
   into selected_variant
   from public.product_variants
@@ -95,6 +161,10 @@ begin
     raise exception 'A selected variant no longer exists.';
   end if;
 
+  if selected_variant.product_id <> selected_product.id then
+    raise exception 'A selected variant does not belong to the selected product.';
+  end if;
+
   if selected_variant.is_active is not true then
     raise exception 'A selected variant is unavailable.';
   end if;
@@ -102,20 +172,6 @@ begin
   if selected_variant.stock_quantity is null
      or selected_variant.stock_quantity < new.quantity then
     raise exception 'Insufficient stock for a selected variant.';
-  end if;
-
-  select *
-  into selected_product
-  from public.products
-  where id = coalesce(new.product_id, selected_variant.product_id)
-  for update;
-
-  if not found then
-    raise exception 'A product in your cart is unavailable.';
-  end if;
-
-  if selected_variant.product_id <> selected_product.id then
-    raise exception 'A selected variant does not belong to the selected product.';
   end if;
 
   if selected_product.is_available is not true then
@@ -132,10 +188,9 @@ begin
     raise exception 'This product has an invalid price.';
   end if;
 
-  -- Conditional update reinforces the row lock and stock check.
   update public.product_variants
   set stock_quantity = stock_quantity - new.quantity,
-      updated_at = now()
+      updated_at = pg_catalog.now()
   where id = selected_variant.id
     and is_active is true
     and stock_quantity >= new.quantity;
@@ -152,7 +207,7 @@ begin
   new.variant_attributes := selected_variant.attributes;
   new.variant_image_url := selected_variant.image_url;
   new.unit_price :=
-    coalesce(selected_variant.price, selected_product.price);
+    COALESCE(selected_variant.price, selected_product.price);
   new.line_total := new.unit_price * new.quantity;
   new.stock_restored := false;
 
@@ -171,12 +226,11 @@ before insert on public.order_items
 for each row
 execute function public.validate_variant_order_item();
 
--- Automatically restore variant stock exactly once for a cancelled order.
 create or replace function public.restore_variant_stock_on_cancellation()
 returns trigger
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   order_item record;
@@ -196,13 +250,25 @@ begin
     where oi.order_id = new.id
       and oi.variant_id is not null
       and oi.stock_restored is false
+    order by oi.variant_id, oi.id
     for update
   loop
+    if order_item.quantity is null
+       or order_item.quantity < 1 then
+      raise exception
+        'Cannot restore stock for an invalid order item quantity.';
+    end if;
+
     update public.product_variants
     set stock_quantity =
-          stock_quantity + coalesce(order_item.quantity, 0),
-        updated_at = now()
+          stock_quantity + order_item.quantity,
+        updated_at = pg_catalog.now()
     where id = order_item.variant_id;
+
+    if not found then
+      raise exception
+        'Cannot restore stock because a variant no longer exists.';
+    end if;
 
     update public.order_items
     set stock_restored = true
@@ -225,7 +291,6 @@ after update of status on public.orders
 for each row
 execute function public.restore_variant_stock_on_cancellation();
 
--- Replace the existing RPC while preserving its response shape.
 create or replace function public.create_store_order(
   p_vendor_id uuid,
   p_customer_name text,
@@ -237,7 +302,7 @@ create or replace function public.create_store_order(
 returns jsonb
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path to ''
 as $function$
 declare
   v_order_id uuid;
@@ -253,33 +318,36 @@ declare
   v_quantity integer;
   v_unit_price numeric(12, 2);
   v_total numeric(12, 2) := 0;
-  v_seen_combinations text[] := array[]::text[];
+  v_seen_combinations text[] := ARRAY[]::text[];
   v_combination text;
+  v_product_ids uuid[] := ARRAY[]::uuid[];
+  v_variant_ids uuid[] := ARRAY[]::uuid[];
+  v_locked_id uuid;
 begin
   if p_vendor_id is null then
     raise exception 'Invalid store.';
   end if;
 
-  if nullif(btrim(p_customer_name), '') is null
-     or nullif(btrim(p_customer_phone), '') is null
-     or nullif(btrim(p_delivery_address), '') is null then
+  if NULLIF(pg_catalog.btrim(p_customer_name), '') is null
+     or NULLIF(pg_catalog.btrim(p_customer_phone), '') is null
+     or NULLIF(pg_catalog.btrim(p_delivery_address), '') is null then
     raise exception 'Please provide your name, phone number and delivery address.';
   end if;
 
-  if char_length(btrim(p_customer_name)) > 150
-     or char_length(btrim(p_customer_phone)) > 30
-     or char_length(btrim(p_delivery_address)) > 1000
-     or char_length(coalesce(p_customer_note, '')) > 1000 then
+  if pg_catalog.char_length(pg_catalog.btrim(p_customer_name)) > 150
+     or pg_catalog.char_length(pg_catalog.btrim(p_customer_phone)) > 30
+     or pg_catalog.char_length(pg_catalog.btrim(p_delivery_address)) > 1000
+     or pg_catalog.char_length(COALESCE(p_customer_note, '')) > 1000 then
     raise exception 'One or more customer details are too long.';
   end if;
 
   if p_items is null
-     or jsonb_typeof(p_items) is distinct from 'array'
-     or jsonb_array_length(p_items) = 0 then
+     or pg_catalog.jsonb_typeof(p_items) is distinct from 'array'
+     or pg_catalog.jsonb_array_length(p_items) = 0 then
     raise exception 'Your cart is empty.';
   end if;
 
-  if jsonb_array_length(p_items) > 50 then
+  if pg_catalog.jsonb_array_length(p_items) > 50 then
     raise exception 'Too many different products in one order.';
   end if;
 
@@ -293,11 +361,118 @@ begin
     raise exception 'This store is currently unavailable.';
   end if;
 
+  -- Parse and validate cart combinations before taking row locks.
+  for v_item in
+    select item.value
+    from pg_catalog.jsonb_array_elements(p_items) as item(value)
+  loop
+    if pg_catalog.jsonb_typeof(v_item) is distinct from 'object' then
+      raise exception 'Invalid product information in your cart.';
+    end if;
+
+    if pg_catalog.jsonb_typeof(v_item -> 'product_id') is distinct from 'string' then
+      raise exception 'Invalid product ID.';
+    end if;
+
+    v_product_id_text := v_item ->> 'product_id';
+    if v_product_id_text !~
+       '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+      raise exception 'Invalid product ID.';
+    end if;
+    v_product_id := v_product_id_text::uuid;
+
+    v_variant_id := null;
+    v_variant_id_text := v_item ->> 'variant_id';
+    if v_variant_id_text is not null
+       and pg_catalog.btrim(v_variant_id_text) <> '' then
+      if v_variant_id_text !~
+         '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
+        raise exception 'Invalid variant ID.';
+      end if;
+      v_variant_id := v_variant_id_text::uuid;
+    end if;
+
+    v_combination :=
+      v_product_id::text || ':' ||
+      COALESCE(v_variant_id::text, 'base');
+    if v_combination = any(v_seen_combinations) then
+      raise exception 'The same product and variant appears more than once in your cart.';
+    end if;
+    v_seen_combinations :=
+      pg_catalog.array_append(v_seen_combinations, v_combination);
+
+    if pg_catalog.jsonb_typeof(v_item -> 'quantity') is distinct from 'number' then
+      raise exception 'Invalid product quantity.';
+    end if;
+    v_quantity_text := v_item ->> 'quantity';
+    if v_quantity_text !~ '^[0-9]+$'
+       or pg_catalog.char_length(v_quantity_text) > 2 then
+      raise exception 'Invalid product quantity.';
+    end if;
+    v_quantity := v_quantity_text::integer;
+    if v_quantity < 1 or v_quantity > 99 then
+      raise exception 'Invalid product quantity.';
+    end if;
+
+    if not (v_product_id = any(v_product_ids)) then
+      v_product_ids :=
+        pg_catalog.array_append(v_product_ids, v_product_id);
+    end if;
+    if v_variant_id is not null
+       and not (v_variant_id = any(v_variant_ids)) then
+      v_variant_ids :=
+        pg_catalog.array_append(v_variant_ids, v_variant_id);
+    end if;
+  end loop;
+
+  -- Lock products and variants in sorted order for multi-item deadlock reduction.
+  for v_locked_id in
+    select product_id
+    from pg_catalog.unnest(v_product_ids) as product_id
+    order by product_id
+  loop
+    select *
+    into v_product
+    from public.products
+    where id = v_locked_id
+      and vendor_id = p_vendor_id
+      and is_available = true
+    for update;
+
+    if not found then
+      raise exception 'A product in your cart is unavailable.';
+    end if;
+  end loop;
+
+  for v_locked_id in
+    select variant_id
+    from pg_catalog.unnest(v_variant_ids) as variant_id
+    order by variant_id
+  loop
+    select *
+    into v_variant
+    from public.product_variants
+    where id = v_locked_id
+    for update;
+
+    if not found then
+      raise exception 'A selected variant no longer exists.';
+    end if;
+
+    if v_variant.is_active is not true then
+      raise exception 'A selected variant is unavailable.';
+    end if;
+
+    if not (v_variant.product_id = any(v_product_ids)) then
+      raise exception 'A selected variant does not belong to the selected store.';
+    end if;
+  end loop;
+
   v_order_reference :=
     'NXS-' ||
-    upper(
-      substring(
-        replace(gen_random_uuid()::text, '-', ''),
+    pg_catalog.upper(
+      pg_catalog.substring(
+        pg_catalog.replace(pg_catalog.gen_random_uuid()::text, '-', ''),
         1,
         10
       )
@@ -314,95 +489,34 @@ begin
   values (
     p_vendor_id,
     v_order_reference,
-    btrim(p_customer_name),
-    btrim(p_customer_phone),
-    btrim(p_delivery_address),
-    nullif(btrim(coalesce(p_customer_note, '')), '')
+    pg_catalog.btrim(p_customer_name),
+    pg_catalog.btrim(p_customer_phone),
+    pg_catalog.btrim(p_delivery_address),
+    NULLIF(
+      pg_catalog.btrim(COALESCE(p_customer_note, '')),
+      ''
+    )
   )
   returning id into v_order_id;
 
   for v_item in
     select item.value
-    from jsonb_array_elements(p_items) item(value)
+    from pg_catalog.jsonb_array_elements(p_items) as item(value)
   loop
-    if jsonb_typeof(v_item) is distinct from 'object' then
-      raise exception 'Invalid product information in your cart.';
-    end if;
-
-    if jsonb_typeof(v_item -> 'product_id') is distinct from 'string' then
-      raise exception 'Invalid product ID.';
-    end if;
-
-    v_product_id_text := v_item ->> 'product_id';
-
-    if v_product_id_text !~
-       '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
-      raise exception 'Invalid product ID.';
-    end if;
-
-    v_product_id := v_product_id_text::uuid;
-
+    v_product_id :=
+      (v_item ->> 'product_id')::uuid;
     v_variant_id := null;
+
     v_variant_id_text := v_item ->> 'variant_id';
-
     if v_variant_id_text is not null
-       and btrim(v_variant_id_text) <> '' then
-      if v_variant_id_text !~
-         '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' then
-        raise exception 'Invalid variant ID.';
-      end if;
-
+       and pg_catalog.btrim(v_variant_id_text) <> '' then
       v_variant_id := v_variant_id_text::uuid;
     end if;
 
-    v_combination :=
-      v_product_id::text || ':' ||
-      coalesce(v_variant_id::text, 'base');
-
-    if v_combination = any(v_seen_combinations) then
-      raise exception 'The same product and variant appears more than once in your cart.';
-    end if;
-
-    v_seen_combinations :=
-      array_append(v_seen_combinations, v_combination);
-
-    if jsonb_typeof(v_item -> 'quantity') is distinct from 'number' then
-      raise exception 'Invalid product quantity.';
-    end if;
-
-    v_quantity_text := v_item ->> 'quantity';
-
-    if v_quantity_text !~ '^[0-9]+$'
-       or char_length(v_quantity_text) > 2 then
-      raise exception 'Invalid product quantity.';
-    end if;
-
-    v_quantity := v_quantity_text::integer;
-
-    if v_quantity < 1 or v_quantity > 99 then
-      raise exception 'Invalid product quantity.';
-    end if;
-
-    select p.id,
-           p.name,
-           p.price
-    into v_product
-    from public.products p
-    where p.id = v_product_id
-      and p.vendor_id = p_vendor_id
-      and p.is_available = true;
-
-    if not found then
-      raise exception 'A product in your cart is unavailable.';
-    end if;
+    v_quantity :=
+      (v_item ->> 'quantity')::integer;
 
     if v_variant_id is null then
-      v_unit_price := v_product.price;
-
-      if v_unit_price is null or v_unit_price < 0 then
-        raise exception 'This product has an invalid price.';
-      end if;
-
       insert into public.order_items (
         order_id,
         product_id,
@@ -411,31 +525,11 @@ begin
       )
       values (
         v_order_id,
-        v_product.id,
+        v_product_id,
         null,
         v_quantity
       );
     else
-      select pv.id,
-             pv.product_id,
-             pv.price
-      into v_variant
-      from public.product_variants pv
-      where pv.id = v_variant_id
-        and pv.product_id = v_product.id
-        and pv.is_active = true;
-
-      if not found then
-        raise exception 'A selected variant is unavailable.';
-      end if;
-
-      v_unit_price :=
-        coalesce(v_variant.price, v_product.price);
-
-      if v_unit_price is null or v_unit_price < 0 then
-        raise exception 'This variant has an invalid price.';
-      end if;
-
       insert into public.order_items (
         order_id,
         product_id,
@@ -444,21 +538,28 @@ begin
       )
       values (
         v_order_id,
-        v_product.id,
-        v_variant.id,
+        v_product_id,
+        v_variant_id,
         v_quantity
       );
     end if;
-
-    v_total := v_total + (v_unit_price * v_quantity);
   end loop;
+
+  -- Calculate from saved, trigger-calculated order item line totals.
+  select COALESCE(
+    pg_catalog.sum(line_total),
+    0
+  )
+  into v_total
+  from public.order_items
+  where order_id = v_order_id;
 
   update public.orders
   set total_amount = v_total,
-      updated_at = now()
+      updated_at = pg_catalog.now()
   where id = v_order_id;
 
-  return jsonb_build_object(
+  return pg_catalog.jsonb_build_object(
     'success', true,
     'order_id', v_order_id,
     'order_reference', v_order_reference,

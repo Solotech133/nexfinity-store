@@ -1482,6 +1482,31 @@
   letter-spacing: 1px;
 }
 
+.public-store-success-items {
+  margin: 8px 0 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.public-store-success-item {
+  padding: 10px 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--store-border);
+}
+
+.public-store-success-item > div {
+  display: grid;
+  gap: 3px;
+}
+
+.public-store-success-item span {
+  color: var(--store-muted);
+  font-size: 11px;
+}
+
 .public-store-success-total {
   padding: 13px 0;
   border-bottom: 1px solid var(--store-border);

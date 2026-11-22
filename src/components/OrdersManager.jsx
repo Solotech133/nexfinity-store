@@ -141,6 +141,12 @@ export default function OrdersManager({ vendor }) {
           unit_price,
           quantity,
           line_total,
+          variant_id,
+          variant_name,
+          variant_color,
+          variant_size,
+          variant_attributes,
+          variant_image_url,
           created_at
         `)
         .in("order_id", orderIds)
@@ -671,6 +677,28 @@ export default function OrdersManager({ vendor }) {
                     <div className="orders-detail-item" key={item.id}>
                       <div>
                         <strong>{item.product_name}</strong>
+                        {item.variant_id && (
+                          <div className="orders-variant-details">
+                            {[item.variant_name, item.variant_color, item.variant_size]
+                              .filter(Boolean)
+                              .join(" · ") && (
+                              <span>
+                                {[item.variant_name, item.variant_color, item.variant_size]
+                                  .filter(Boolean)
+                                  .join(" · ")}
+                              </span>
+                            )}
+                            {item.variant_attributes &&
+                              typeof item.variant_attributes === "object" &&
+                              Object.entries(item.variant_attributes).map(
+                                ([key, value]) => (
+                                  <span key={key}>
+                                    {key}: {String(value)}
+                                  </span>
+                                )
+                              )}
+                          </div>
+                        )}
                         <span>
                           {formatPrice(item.unit_price)} × {item.quantity}
                         </span>
