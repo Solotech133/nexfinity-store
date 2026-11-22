@@ -2715,3 +2715,25 @@
 .public-store-cart-panel .public-store-cart-empty > svg {
   color: var(--store-button-accent);
 }
+
+#store-top.public-store-page .public-store-checkout-summary {
+  border-color: var(--store-cart-ink);
+  background: var(--store-cart-ink);
+}
+
+#store-top.public-store-page .public-store-checkout-summary span,
+#store-top.public-store-page .public-store-checkout-summary strong {
+  color: var(--store-button-accent);
+}
+
+#store-top.public-store-page .public-store-checkout-form input,
+#store-top.public-store-page .public-store-checkout-form textarea {
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: var(--store-dark);
+}
+
+#store-top.public-store-page .public-store-checkout-form input::placeholder,
+#store-top.public-store-page .public-store-checkout-form textarea::placeholder {
+  color: #64748b;
+}
